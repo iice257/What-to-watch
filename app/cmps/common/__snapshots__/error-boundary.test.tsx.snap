@@ -1,0 +1,99 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ErrorBoundary > should match snapshot for error state 1`] = `
+<div
+  class="fixed inset-0 z-50 grid h-dvh w-dvw place-items-center bg-background p-6 text-foreground"
+>
+  <div
+    class="max-w-2xl rounded-lg border border-border bg-card p-6 shadow-sm"
+  >
+    <h1
+      class="mb-2 font-bold text-xl"
+    >
+      Something went wrong
+    </h1>
+    <p
+      class="mb-4 text-muted-foreground text-sm"
+    >
+      The app encountered an unexpected error. This can happen if your browser or GPU doesn’t fully support WebGL or required extensions.
+    </p>
+    <div
+      class="mb-4 rounded-md border border-border bg-popover p-3 text-xs"
+    >
+      <p
+        class="mb-1 font-semibold"
+      >
+        What you can try
+      </p>
+      <ul
+        class="list-inside list-disc space-y-1"
+      >
+        <li>
+          Reload this page
+        </li>
+        <li>
+          Update your browser/graphics drivers
+        </li>
+        <li>
+          Try a different browser (Chrome/Firefox)
+        </li>
+      </ul>
+    </div>
+    <pre
+      class="mb-4 max-h-48 overflow-auto rounded-md border border-border bg-muted p-3 text-[11px] leading-tight"
+    >
+      message: Test error message
+stack: Error: Test error message
+    at ThrowError (/home/g/projects/private/nothing-to-watch/app/cmps/common/error-boundary.test.tsx:22:11)
+    at Object.react-stack-bottom-frame (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:23863:20)
+    at renderWithHooks (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:5529:22)
+    at updateFunctionComponent (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:8897:19)
+    at beginWork (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:10522:18)
+    at runWithFiberInDEV (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:1522:13)
+    at performUnitOfWork (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:15140:22)
+    at workLoopSync (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:14956:41)
+    at renderRootSync (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:14936:11)
+    at performWorkOnRoot (/home/g/projects/private/nothing-to-watch/node_modules/react-dom/cjs/react-dom-client.development.js:14462:44)
+userAgent: Mozilla/5.0 (linux) AppleWebKit/537.36 (KHTML, like Gecko) jsdom/26.1.0
+    </pre>
+    <div
+      class="flex flex-wrap gap-2"
+    >
+      <button
+        class="rounded-md border border-input bg-secondary px-3 py-2 text-sm hover:bg-secondary/80"
+        type="button"
+      >
+        Reload
+      </button>
+      <button
+        class="rounded-md border border-input bg-secondary px-3 py-2 text-sm hover:bg-secondary/80"
+        type="button"
+      >
+        Copy details
+      </button>
+      <a
+        class="rounded-md border border-input bg-secondary px-3 py-2 text-sm hover:bg-secondary/80"
+        href="https://github.com/example/repo"
+        rel="noreferrer noopener"
+        target="_blank"
+      >
+        Report issue
+      </a>
+      <button
+        class="rounded-md border border-input bg-secondary px-3 py-2 text-sm hover:bg-secondary/80"
+        type="button"
+      >
+        Dismiss
+      </button>
+    </div>
+  </div>
+</div>
+`;
+
+exports[`ErrorBoundary > should match snapshot for normal state 1`] = `
+<div
+  data-testid="child-content"
+>
+  Test content
+</div>
+`;
