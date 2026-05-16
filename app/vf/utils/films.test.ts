@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { Film, type FilmData, getSimilarFilms, scoreSimilarFilm } from './films'
+import {
+  Film,
+  type FilmData,
+  getDiscoveryTags,
+  getSimilarFilms,
+  getSimilarityReasons,
+  scoreSimilarFilm,
+} from './films'
 
 const filmData = (overrides: Partial<FilmData>): FilmData => ({
   id: 1,
@@ -17,6 +24,16 @@ const filmData = (overrides: Partial<FilmData>): FilmData => ({
 })
 
 describe('film similarity', () => {
+  it('normalizes comma-separated genres with inconsistent spacing', () => {
+    const film = new Film(
+      filmData({
+        genres: 'Drama,Thriller, Science Fiction',
+      }),
+    )
+
+    expect(film.genres).toEqual(['Drama', 'Thriller', 'Science Fiction'])
+  })
+
   it('scores films with shared genres higher than unrelated films', () => {
     const source = new Film(filmData({ id: 1, title: 'Source' }))
     const similar = new Film(
@@ -62,5 +79,43 @@ describe('film similarity', () => {
     const [first] = getSimilarFilms(source, batches, 2)
 
     expect(first?.film.title).toBe('Closest')
+    expect(first?.reasons).toContain('Shared Drama and Thriller DNA')
+  })
+
+  it('returns concise reasons for similar films', () => {
+    const source = new Film(filmData({ id: 1, title: 'Source' }))
+    const candidate = new Film(
+      filmData({
+        id: 2,
+        title: 'Candidate',
+        release_year: 2003,
+        vote_average: 7.6,
+      }),
+    )
+
+    expect(getSimilarityReasons(source, candidate)).toEqual([
+      'Shared Drama and Thriller DNA',
+      'Same era',
+      'Similar TMDB score',
+    ])
+  })
+
+  it('classifies films with local discovery tags', () => {
+    const film = new Film(
+      filmData({
+        id: 2,
+        title: 'Hidden Slow Burn',
+        genres: 'Drama, Mystery',
+        release_year: 1998,
+        vote_average: 7.8,
+        popularity: 20,
+      }),
+    )
+
+    expect(getDiscoveryTags(film)).toEqual([
+      'hidden-gem',
+      'throwback',
+      'slow-burn',
+    ])
   })
 })

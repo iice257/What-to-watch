@@ -5,10 +5,26 @@ import { store } from '../../../../../store'
 import { useShallowState } from '../../../../../store'
 import { down, orientation } from '../../../../../utils/mq'
 import { cn } from '../../../../../utils/tw'
-import { type Film, getSimilarFilms } from '../../../../../vf'
+import {
+  type DiscoveryTag,
+  type Film,
+  getDiscoveryTags,
+  getSimilarFilms,
+} from '../../../../../vf'
 import { AnimateDimensionsChange } from '../../../../common/animate-dimensions-change'
 import { Badge } from '../../../../ui/badge'
 import { FilmRatingGauge } from '../../shared/film-rating-gauge'
+
+const discoveryTagLabels: Record<DiscoveryTag, string> = {
+  'crowd-pleaser': 'Crowd pleaser',
+  'hidden-gem': 'Hidden gem',
+  'recent-pick': 'Recent pick',
+  throwback: 'Throwback',
+  'comfort-watch': 'Comfort watch',
+  'high-energy': 'High energy',
+  'slow-burn': 'Slow burn',
+  'visually-striking': 'Visually striking',
+}
 
 export const FilmView = ({
   film,
@@ -36,6 +52,10 @@ export const FilmView = ({
   const similarFilms = useMemo(
     () => (film ? getSimilarFilms(film, filmBatches, 4) : []),
     [film, filmBatches],
+  )
+  const discoveryTags = useMemo(
+    () => (film ? getDiscoveryTags(film).slice(0, 3) : []),
+    [film],
   )
 
   if (!film) return
@@ -126,6 +146,19 @@ export const FilmView = ({
                         </Badge>
                       ))}
                     </div>
+                    {discoveryTags.length > 0 && (
+                      <div className='flex flex-wrap gap-2'>
+                        {discoveryTags.map((tag) => (
+                          <Badge
+                            key={tag}
+                            variant='outline'
+                            className='border-foreground/25 bg-background/30 text-[0.6rem] text-foreground/75 leading-none backdrop-blur-sm md:text-xs'
+                          >
+                            {discoveryTagLabels[tag]}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -143,14 +176,21 @@ export const FilmView = ({
                   Movies like this
                 </h4>
                 <div className='flex flex-wrap gap-2'>
-                  {similarFilms.map(({ film: similarFilm }) => (
-                    <span
+                  {similarFilms.map(({ film: similarFilm, reasons }) => (
+                    <div
                       key={similarFilm.tmdbId}
-                      className='rounded border border-foreground/20 px-2 py-1 text-foreground/80 leading-none'
+                      className='max-w-full rounded-md border border-foreground/20 bg-background/20 px-2 py-1.5 text-foreground/80 leading-tight backdrop-blur-sm'
                     >
-                      {similarFilm.title}
-                      {similarFilm.year ? ` (${similarFilm.year})` : ''}
-                    </span>
+                      <div className='truncate font-medium'>
+                        {similarFilm.title}
+                        {similarFilm.year ? ` (${similarFilm.year})` : ''}
+                      </div>
+                      {reasons.length > 0 && (
+                        <div className='mt-0.5 truncate text-foreground/55 text-xxs'>
+                          {reasons.join(' / ')}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
