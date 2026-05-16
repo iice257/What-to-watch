@@ -20,6 +20,30 @@ export type CustomLink = {
   property: 'title' | 'tmdbId' | 'imdbId'
 }
 
+const customLinkProperties = ['title', 'tmdbId', 'imdbId'] as const
+
+export const isValidCustomLink = (value: unknown): value is CustomLink => {
+  if (!value || typeof value !== 'object') return false
+
+  const customLink = value as Partial<CustomLink>
+  if (!customLink.name?.trim() || !customLink.baseUrl?.trim()) return false
+  if (typeof customLink.slug !== 'boolean') return false
+  if (
+    !customLinkProperties.includes(
+      customLink.property as CustomLink['property'],
+    )
+  ) {
+    return false
+  }
+
+  try {
+    const url = new URL(customLink.baseUrl)
+    return url.protocol === 'http:' || url.protocol === 'https:'
+  } catch {
+    return false
+  }
+}
+
 export type UserConfig = {
   cells?: number
   devTools?: boolean
@@ -44,6 +68,8 @@ const handleCustomLinkParam = (
   const { userConfig, setUserConfig } = state
   try {
     const customLink = JSON.parse(window.atob(customLinkBase64Param))
+    if (!isValidCustomLink(customLink)) return
+
     userConfig.customLinks = [...(userConfig.customLinks ?? [])]
     const sameNameIndex = userConfig.customLinks.findIndex(
       ({ name }) => name === customLink.name,

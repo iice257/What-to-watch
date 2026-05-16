@@ -4,7 +4,7 @@ test('has title', async ({ page }) => {
   await page.goto('/')
 
   // Expect a title "to contain" a substring - matches actual title
-  await expect(page).toHaveTitle("There's nothing to watch")
+  await expect(page).toHaveTitle('What to Watch')
 })
 
 test('loads application without errors', async ({ page }) => {

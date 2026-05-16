@@ -16,11 +16,11 @@ This directory contains the testing configuration for the application.
 ## Test Scripts
 
 ```bash
-bun test              # Run unit tests in watch mode
-bun test:unit         # Run unit tests in watch mode  
-bun test:unit:ui      # Run tests with Vitest UI
-bun test:unit:coverage # Run tests with coverage report
-bun test:e2e          # Run Playwright E2E tests
+npm run test              # Run unit tests in watch mode
+npm run test:unit         # Run unit tests in watch mode
+npm run test:unit:ui      # Run tests with Vitest UI
+npm run test:unit:coverage # Run tests with coverage report
+npm run test:e2e          # Run Playwright E2E tests
 ```
 
 ## Test Structure

@@ -4,23 +4,23 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
-- `bun dev` - Start development server on port 3000
-- `bun build` - Build the application with TypeScript compilation
-- `bun preview` - Preview the built application
-- `bun lint` - Lint code with Biome
-- `bun format` - Format code with Biome  
-- `bun check` - Run Biome checks (lint + format)
-- `bun check:write` - Auto-fix Biome issues with unsafe fixes
-- `bun analyze` - Build with bundle analysis enabled
+- `npm run dev` - Start development server on port 3000
+- `npm run build` - Build the application with TypeScript compilation
+- `npm run preview` - Preview the built application
+- `npm run lint` - Lint code with Biome
+- `npm run format` - Format code with Biome
+- `npm run check` - Run Biome checks (lint + format)
+- `npm run check:write` - Auto-fix Biome issues with unsafe fixes
+- `npm run analyze` - Build with bundle analysis enabled
 
 ## Testing Commands
 
-- `bun run test` - Run unit tests with Vitest (use `bun run test`, not `bun test`)
-- `bun test:unit` - Run unit tests with Vitest  
-- `bun test:unit:coverage` - Run unit tests with coverage report
-- `bun test:e2e` - Run end-to-end tests with Playwright
-- `bun test:e2e:headed` - Run E2E tests in headed mode (visible browser)
-- `bun test:e2e:ui` - Run E2E tests with Playwright UI
+- `npm run test` - Run unit tests with Vitest
+- `npm run test:unit` - Run unit tests with Vitest
+- `npm run test:unit:coverage` - Run unit tests with coverage report
+- `npm run test:e2e` - Run end-to-end tests with Playwright
+- `npm run test:e2e:headed` - Run E2E tests in headed mode (visible browser)
+- `npm run test:e2e:ui` - Run E2E tests with Playwright UI
 
 ## Architecture Overview
 

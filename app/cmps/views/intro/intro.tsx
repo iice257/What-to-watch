@@ -49,10 +49,10 @@ export const Intro = () => {
           <h1 className='font-black text-4xl leading-none md:text-5xl md:leading-none'>
             <span className='inline-flex'>
               <span className='max-md:hidden'>"</span>
-              <i>There's nothing</i>
+              <i>What</i>
             </span>{' '}
             <span className='relative inline-flex'>
-              <i>to watch</i>
+              <i>to Watch</i>
               <span className='max-md:hidden'>"</span>
               <span className='absolute bottom-0 left-full after:animate-ellipsis' />
             </span>

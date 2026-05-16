@@ -1,290 +1,230 @@
-# There's nothing to watch...
+# What to Watch
 
-The silver screen's heyday is arguably behind us. Luckily, we have
-over a hundred years of cinema to fall back on.
+A personal movie discovery project by ICE.
 
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Creative Commons License](https://img.shields.io/badge/License-CC%20BY--NC--SA%203.0-lightgrey.svg)
-![ODC Attribution License](https://img.shields.io/badge/License-ODC%20By-brightgreen.svg)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.8-blue.svg)
-![React](https://img.shields.io/badge/React-19.1-blue.svg)
-![WebGL](https://img.shields.io/badge/WebGL-enabled-green.svg)
+What to Watch is built for the exact moment when you want to watch something, but you do not know what to watch. Instead of handing you another flat list, it turns movie discovery into an interactive visual experience: explore a field of films, follow your curiosity, open details, save favorites, and jump out to familiar movie services when something catches your eye.
 
-## 🎬 Overview
-An experimental WebGL gallery that visualizes tens of thousands of film posters in an interactive force-directed voronoi diagram.
+Landing page: [Coming soon](#coming-soon)
 
-### Key Features
+## Why This Exists
 
-- **Interactive WebGL Visualization**: Real-time rendering of tens of thousands of film posters
-- **Custom Voroforce Engine**: Purpose-built force simulation and rendering system with multi-threading support
-- **Responsive Design**: Adapts to desktop, tablet, and mobile devices
-- **Performance Optimized**: GPU-accelerated rendering with efficient memory management
-- **Film Discovery**: Explore movies through visual relationships and clustering
-- **Multiple View Modes**: Intro, selection, and preview modes for different user experiences
+Streaming services make it easy to access movies, but they do not always make it easy to choose one. Recommendation rows can feel repetitive, search assumes you already know what you want, and watchlists can become another pile of decisions.
 
-## 🚀 Quick Start
+What to Watch is my personal answer to that problem. It is a playful, visual way to browse films when the only thing you know is that you want to watch something. The goal is not to optimize the choice down to a perfect recommendation. The goal is to make browsing feel interesting enough that a choice naturally appears.
 
-### Prerequisites
+## What It Does
 
-- **Bun** (recommended) or Node.js 18+ with a package manager of your choice (npm, yarn, pnpm, etc.)
-- Modern browser with WebGL 2.0 support
+What to Watch presents movies inside an interactive WebGL visualization. Film posters are arranged in a force-driven visual space, letting you pan, zoom, inspect, and select movies in a more exploratory way than a normal catalog.
 
-### Installation
+You can use it to:
 
-1. **Clone the repository**
-   ```bash
-   git clone git@github.com:gnovotny/nothing-to-watch.git
-   cd nothing-to-watch
-   ```
+- Browse films visually when you are undecided.
+- Open a movie preview and inspect basic details.
+- Move between discovery, preview, and selection states.
+- Save movies as favorites for later.
+- Add custom outbound links for the movie services or search tools you personally use.
+- Tune visual and performance settings for your device.
+- Switch between light and dark interface themes.
 
-2. **Set up environment variables**
-   ```bash
-   cp .env.local.example .env.local
-   ```
+## Product Focus
 
-3. **Install dependencies**
-   ```bash
-   bun install
-   ```
+This project is designed around a simple user journey:
 
-4. **Start development server**
-   ```bash
-   bun dev
-   ```
+1. You arrive because you want to watch something.
+2. The app gives you a visual field of possibilities instead of another rigid list.
+3. You move through posters, colors, clusters, and previews.
+4. A title catches your attention.
+5. You open it, save it, or follow a link to keep exploring elsewhere.
 
-5. **Open your browser**
-   Navigate to `http://localhost:3000`
+The product idea is intentionally lightweight: reduce the blank-screen feeling of choosing a movie, and make the browsing process itself enjoyable.
 
-## 🛠 Development
+## Core Features
 
-### Available Scripts
+### Visual Movie Discovery
 
-| Command | Description |
-|---------|-------------|
-| `bun dev` | Start development server on port 3000 |
-| `bun build` | Build for production with TypeScript compilation |
-| `bun preview` | Preview production build |
-| `bun lint` | Lint code with Biome |
-| `bun format` | Format code with Biome |
-| `bun check` | Run comprehensive Biome checks |
-| `bun check:write` | Auto-fix Biome issues |
-| `bun analyze` | Build with bundle analysis |
+The main experience is an interactive movie canvas powered by WebGL. It is built to make a large collection of films feel browseable, tactile, and alive.
 
-### Testing Commands
+### Film Preview
 
-| Command | Description |
-|---------|-------------|
-| `bun run test` | Run unit tests with Vitest |
-| `bun test:unit:coverage` | Run unit tests with coverage |
-| `bun test:e2e` | Run end-to-end tests with Playwright |
-| `bun test:e2e:headed` | Run E2E tests in headed mode |
-| `bun test:e2e:ui` | Run E2E tests with Playwright UI |
+Selecting a film opens a focused view with movie details and related actions. The app is meant to help you quickly decide whether a title is worth following up on.
 
-## 🏗 Architecture
+### Favorites
 
-### Stack
+Movies can be saved into a local favorites list so interesting titles do not disappear after browsing.
 
-- **React 19** with TypeScript and Vite
-- **Tailwind CSS** with Radix UI components (Shadcn)
-- **Zustand** for state management
+### Custom Links
 
-### Engine (Voroforce)
+You can create your own outbound movie links. For example, you can add a custom search URL for a streaming guide, review site, or search engine, then reuse it from any film view.
 
-- Custom vanilla JS force simulation and rendering engine
-- **OGL** - Lightweight WebGL library for 3D rendering
-- **GLSL shaders**
-- **Multi-threaded** simulation support
+### Device-Aware Settings
 
-### Project Structure
+The app includes presets and cell limits to balance visual quality with performance. It can adjust the experience for different device classes, including smaller or less powerful devices.
 
+### Personal Settings
+
+Theme, intro state, visual preset, device class, cell limit, and user configuration are persisted locally so the app remembers your preferences across sessions.
+
+## Who It Is For
+
+What to Watch is for people who:
+
+- Want to watch a movie but do not have a title in mind.
+- Prefer browsing and discovery over strict recommendation feeds.
+- Like visual interfaces and exploratory tools.
+- Keep running into the same suggestions on streaming platforms.
+- Want a personal, low-pressure way to stumble into their next movie.
+
+## Current Status
+
+This is an active personal project. The core app experience is present, with a React interface, local settings, favorites, custom links, and a custom WebGL visualization engine.
+
+The public landing page is not live yet.
+
+Product link: [Coming soon](#coming-soon)
+
+## Tech Stack
+
+- React 19
+- TypeScript
+- Vite
+- Tailwind CSS
+- Radix UI primitives
+- Zustand for app state
+- OGL and custom GLSL shaders for rendering
+- Custom Voroforce visualization and simulation engine
+- Vitest for unit tests
+- Playwright for end-to-end tests
+- Biome for linting and formatting
+
+## How It Works
+
+The app has two main layers:
+
+- The React app, located in `app/`, handles interface state, settings, modals, film views, favorites, and user interaction.
+- The Voroforce engine, located in `voroforce/`, handles the interactive simulation, rendering, controls, media loading, and WebGL scene.
+
+Film data and poster media are served from the `public/` directory. The React layer connects to the visualization engine through the store and the `app/vf/` integration layer.
+
+## Project Structure
+
+```text
+app/
+  cmps/                 React components, views, layout, and UI primitives
+  store/                Zustand store slices and selectors
+  utils/                App utilities, settings, storage, telemetry, helpers
+  vf/                   Voroforce app integration, presets, config, uniforms
+  main.tsx              Browser entry point
+  app.tsx               Main React app shell
+
+voroforce/
+  controls/             Pointer, keyboard, gesture, and focus controls
+  display/              WebGL renderer, scene, shaders, and texture handling
+  simulation/           Force simulation and worker-backed simulation steps
+  common/               Shared engine data structures and helpers
+
+public/
+  json/                 Film metadata
+  media/                Poster and texture assets
+  assets/               Static visual assets
+
+playwright-tests/       End-to-end tests
+scripts/                Utility scripts
+docs/                   Supporting project notes
 ```
-├── app/                    # React application
-│   ├── main.tsx           # Entry point
-│   ├── app.tsx            # Main App component
-│   ├── store/             # Zustand store and slices
-│   ├── cmps/              # React components
-│   │   ├── common/        # Shared components
-│   │   ├── ui/            # Radix UI components
-│   │   └── views/         # Main view components
-│   ├── vf/                # Voroforce integration layer
-│   └── utils/             # Utility functions
-├── voroforce/             # Standalone WebGL engine
-│   ├── simulation/        # Force simulation logic
-│   ├── display/           # Rendering system
-│   ├── controls/          # User interaction handling
-│   └── utils/             # Engine utilities
-└── public/                # Static assets
-    ├── json/              # Film data files
-    └── media/             # Film poster images
+
+## Local Development
+
+### Requirements
+
+- Node.js and npm are used by the toolchain.
+- A modern browser with WebGL support is required to run the app properly.
+
+### Install
+
+```bash
+npm install
 ```
 
-### Data Flow
+### Start The Dev Server
 
-1. **Film Data Loading**: JSON files loaded from `public/json/`
-2. **Film Image Serving**: Multi-resolution variants from `public/media/`
-3. **Voroforce Processing**: Data processed into engine
-4. **React Integration**: Components interact through Zustand store
-5. **Mode Management**: User interactions trigger mode changes (intro/select/preview)
+```bash
+npm run dev
+```
 
-## 🎯 Core Components
+The app runs at:
 
-### Voroforce Engine
+```text
+http://localhost:3000
+```
 
-The heart of the application is the custom Voroforce engine:
+### Build
 
-- **Simulation**: Force directed graph with multiple force types
-- **Rendering**: WebGL-based poster rendering with efficient batching
-- **Controls**: Mouse/touch/keyboard interaction with zoom, pan, and selection
-- **Performance**: Multi-threaded simulation with GPU optimization
+```bash
+npm run build
+```
 
-### State Management
+### Preview A Production Build
 
-Zustand store organized into slices:
+```bash
+npm run preview
+```
 
-- **UI Slice**: Interface state, modals, settings
-- **Voroforce Slice**: Engine integration and control
-- **Film Data Slice**: Film data management and loading
+## Scripts
 
-### React Component Architecture
+```bash
+npm run dev                 Start the Vite development server
+npm run build               Type-check and build for production
+npm run preview             Preview the production build
+npm run lint                Run Biome linting
+npm run format              Format files with Biome
+npm run check               Run Biome checks
+npm run check:write         Apply Biome fixes
+npm run test                Run Vitest
+npm run test:unit           Run unit tests
+npm run test:unit:coverage  Run unit tests with coverage
+npm run test:e2e            Run Playwright tests
+npm run test:e2e:headed     Run Playwright tests in a visible browser
+```
 
-- **Layout Components**: Navigation, modals, responsive containers
-- **UI Components**: Radix-based design system components
-- **View Components**: Main application views and screens
+## Configuration
 
-## 🔧 Configuration
+For local development, copy the example environment file:
 
-### Environment Variables
+```bash
+cp .env.local.example .env.local
+```
 
-Create `.env.local` for local development:
+Useful environment values include:
 
 ```bash
 VITE_TEXTURES_BASE_URL=/media
 VITE_FILM_INFO_BASE_URL=/json
-VITE_MEDIA_VERSION_0_LAYERS=1
-VITE_MEDIA_VERSION_1_LAYERS=1
-VITE_MEDIA_VERSION_2_LAYERS=1
-VITE_EXPERIMENTAL_MEDIA_VERSION_3_ENABLED=1
+VITE_TELEMETRY_ENABLED=false
+VITE_TELEMETRY_ENDPOINT=
+VITE_APP_VERSION=
 ```
 
-### Performance Tuning
+## Data And Attribution
 
-The application includes several performance optimization features:
+This project includes movie information derived from the Full TMDB Movies Dataset on Kaggle, made available under the ODC Attribution License.
 
-- **Device Detection**: Recommended presets and settings based on device capabilities
-- **Memory Management**: Efficient WebGL resource handling
-- **Batch Loading**: Chunked film data & media loading
-- **Image Variants**: Multiple resolution options for different scaling levels
+Movie imagery is loaded and displayed for discovery and preview purposes. The app links out to external movie resources where applicable.
 
-## 🧪 Testing
+## Ownership
 
-### Unit Tests
+What to Watch is a personal project by ICE, also known as Kingsley Aremu.
 
-Uses **Vitest** with **@testing-library/react**:
+The project is built as a personal exploration of movie discovery, visual browsing, and interactive recommendation-adjacent interfaces.
 
-```bash
-bun test:unit          # Run unit tests
-bun test:unit:coverage # With coverage report
-```
+## License
 
-### End-to-End Tests
+See `LICENSE` for the repository license.
 
-Uses **Playwright** for E2E testing:
+Additional licensing notes:
 
-```bash
-bun test:e2e           # Run E2E tests
-bun test:e2e:headed    # With visible browser
-bun test:e2e:ui        # With Playwright UI
-```
+- Some shader work is covered by Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported licensing.
+- Film data attribution follows the Open Data Commons Attribution License.
 
-### Code Quality
+## Coming Soon
 
-- **Biome**: Linting and formatting
-- **TypeScript**: Static type checking
-- **Pre-commit hooks**: Automated code quality checks
-
-## 🎨 Styling
-
-### Design System
-
-- **Tailwind CSS** for utility-first styling
-- **Radix UI** for accessible component primitives
-- **Custom CSS variables** for theme management
-- **Responsive design** with mobile-first approach
-
-### Theme Support
-
-- Dark/light theme switching
-- CSS custom properties for consistent theming
-- Radix UI theme integration
-
-## 📱 Browser Support
-
-### Minimum Requirements
-
-- **WebGL 2.0** support
-- **ES2018** JavaScript features
-- **Modern browsers**: Chrome 70+, Firefox 78+, Safari 14+, Edge 79+
-
-### Performance Considerations
-
-- **GPU Requirements**: Dedicated graphics recommended for optimal performance
-- **Memory**: 2GB+ RAM recommended for large datasets
-- **Network**: Good connection for media loading
-
-## 🚀 Deployment
-
-### Production Build
-
-```bash
-bun build              # Create production build
-bun preview            # Preview production build
-```
-
-### Security Headers
-
-The application requires specific security headers:
-
-- **COEP**: `require-corp` for production
-- **CORS**: Proper media hosting configuration
-- **CSP**: Content Security Policy for WebGL applications
-
-## 🤝 Contributing
-
-### Development Setup
-
-1. Follow the [Quick Start](#-quick-start) guide
-2. Install development dependencies
-3. Run the development server
-4. Make your changes
-5. Run tests: `bun test:unit && bun test:e2e`
-6. Ensure code quality: `bun check`
-
-### Code Style
-
-- **Biome** for linting and formatting
-- **Single quotes** for JS/TS strings  
-- **2-space indentation**
-- **Semicolons** only when needed
-- **Tailwind class sorting** enabled
-
-### Commit Guidelines
-
-- Use descriptive commit messages
-- Reference issues when applicable
-- Include tests for new features
-- Ensure all checks pass
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-**Exceptions**: 
-- WebGL fragment shaders are licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 3.0 Unported License.
-- Film data is licensed under the Open Data Commons Attribution License (ODC-By) v1.0.
-
-## 🙋‍♂️ Support
-
-If you have any issues or questions:
-
-- **GitHub Issues**: Open an issue on this repository
-- **Email**: Contact at [96j0o1ivb@mozmail.com](mailto:96j0o1ivb@mozmail.com)
+The public landing page link will be added here when it is ready.

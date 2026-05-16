@@ -2,6 +2,28 @@ import { THEME } from '../../../consts'
 import { VOROFORCE_MODE } from '../../consts'
 import mainFrag from './main.frag'
 
+const parsePositiveNumberEnv = (
+  value: string | undefined,
+): number | undefined => {
+  const parsed = Number.parseFloat(value ?? '')
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
+}
+
+const getRenderPixelRatio = () => {
+  const envPixelRatio = parsePositiveNumberEnv(
+    import.meta.env.VITE_RENDER_PIXEL_RATIO,
+  )
+  if (envPixelRatio) return envPixelRatio
+
+  const devicePixelRatio =
+    typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  const isWindowsChromium =
+    /Windows/i.test(userAgent) && /\b(Chrome|Chromium|Edg)\//i.test(userAgent)
+
+  return Math.min(devicePixelRatio, isWindowsChromium ? 1 : 1.5)
+}
+
 export default {
   scene: {
     dev: {
@@ -206,5 +228,8 @@ export default {
       fragmentShader: undefined,
       uniforms: {},
     },
+  },
+  renderer: {
+    pixelRatio: getRenderPixelRatio(),
   },
 }

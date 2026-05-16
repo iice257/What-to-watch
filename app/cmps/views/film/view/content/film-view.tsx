@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import config from '../../../../../config'
 import { useMediaQuery } from '../../../../../hooks/use-media-query'
 import { store } from '../../../../../store'
+import { useShallowState } from '../../../../../store'
 import { down, orientation } from '../../../../../utils/mq'
 import { cn } from '../../../../../utils/tw'
-import type { Film } from '../../../../../vf'
+import { type Film, getSimilarFilms } from '../../../../../vf'
 import { AnimateDimensionsChange } from '../../../../common/animate-dimensions-change'
 import { Badge } from '../../../../ui/badge'
 import { FilmRatingGauge } from '../../shared/film-rating-gauge'
@@ -19,6 +20,7 @@ export const FilmView = ({
 
   const filmRef = useRef<Film>(undefined)
   const ua = store((state) => state.ua)
+  const filmBatches = useShallowState((state) => state.filmBatches)
 
   const [backdropHidden, setBackdropHidden] = useState(true)
   const [backdropErrored, setBackdropErrored] = useState(true)
@@ -31,6 +33,10 @@ export const FilmView = ({
   }, [film])
 
   const isIOS = useMemo(() => ua.getOS()?.name === 'iOS', [ua])
+  const similarFilms = useMemo(
+    () => (film ? getSimilarFilms(film, filmBatches, 4) : []),
+    [film, filmBatches],
+  )
 
   if (!film) return
 
@@ -131,6 +137,24 @@ export const FilmView = ({
                 {film.overview}
               </p>
             </div>
+            {similarFilms.length > 0 && (
+              <div className='mt-4 flex flex-col gap-2 text-xs md:text-sm'>
+                <h4 className='font-semibold text-foreground/70 uppercase leading-none tracking-normal'>
+                  Movies like this
+                </h4>
+                <div className='flex flex-wrap gap-2'>
+                  {similarFilms.map(({ film: similarFilm }) => (
+                    <span
+                      key={similarFilm.tmdbId}
+                      className='rounded border border-foreground/20 px-2 py-1 text-foreground/80 leading-none'
+                    >
+                      {similarFilm.title}
+                      {similarFilm.year ? ` (${similarFilm.year})` : ''}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

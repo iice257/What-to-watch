@@ -21,10 +21,10 @@
 ### Scripts
 ```bash
 # Generate/update sitemap
-bun seo:sitemap
+npm run seo:sitemap
 
 # Validate SEO setup
-bun seo:validate
+npm run seo:validate
 ```
 
 ## SEO Considerations

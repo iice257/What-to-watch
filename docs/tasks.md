@@ -19,7 +19,7 @@
 [ ] 19. Verify simulation threading model; if workers are used, document the message contract; otherwise, evaluate offloading heavy steps to a Worker with transferable buffers.  
 [ ] 20. Introduce a lightweight performance overlay (hooking PerformanceMonitorApi in store) to show FPS, CPU time, and memory where available.  
 [ ] 21. Add Playwright E2E coverage for: intro -> select -> preview flows, opening/closing settings/about/favorites and theme toggle visibility rules.  
-[x] 22. Add a unit test framework (Vitest + @testing-library/react) for component and store tests; wire to bun test script alongside Playwright.  
+[x] 22. Add a unit test framework (Vitest + @testing-library/react) for component and store tests; wire to npm test scripts alongside Playwright.  
 [x] 23. Add snapshot tests for key UI components with deterministic props to catch accidental visual regressions (non-canvas parts).  
 [ ] 24. Ensure accessibility for icon-only buttons: add aria-labels and ensure focus styles; audit Radix components for correct roles/labels.  
 [ ] 25. Provide keyboard navigation for core UI actions (open settings/about, toggle theme where allowed) and ensure trap focus within dialogs.  
@@ -28,7 +28,7 @@
 [ ] 28. Switch COEP header to 'require-corp' in production; keep 'credentialless' for dev if needed; ensure media hosting sends proper CORP headers.  
 [ ] 29. Self-host DM Sans font (currently loaded from Google) or add preconnect and integrity; document font loading strategy and CSP compatibility.  
 [ ] 30. Add Subresource Integrity (SRI) or remove external CDN dependencies in favor of local assets to simplify CSP.  
-[ ] 31. Configure GitHub Actions (or preferred CI) to run: bun install, biome check, ts typecheck, vite build, and Playwright tests on PRs; upload playwright-report artifact.  
+[ ] 31. Configure GitHub Actions (or preferred CI) to run: npm install, biome check, ts typecheck, vite build, and Playwright tests on PRs; upload playwright-report artifact.  
 [ ] 32. Enforce pre-commit hooks with Biome (lint/format) and typecheck via simple pre-commit/pre-push Husky + lint-staged setup.  
 [ ] 33. Add bundle analysis budget and CI check: fail builds when JS bundles exceed defined thresholds; document target sizes.  
 [ ] 34. Optimize image pipeline: ensure media variants have width/quality budgets; add cache headers and preloading strategy for above-the-fold assets.  

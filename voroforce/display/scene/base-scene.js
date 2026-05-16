@@ -351,6 +351,7 @@ export default class BaseScene {
           // TODO hardcoded to single version
           this.virtualMediaGridTextures[0].prepareLayerUpdate(layerIndex, bytes)
         }
+        this.cellMediaVersionsTexture.needsUpdate = true
       },
     )
 

@@ -61,3 +61,61 @@ export const getCellFilm = async (
     ? new Film(filmBatch[cell.subgridIndex])
     : undefined
 }
+
+const getGenreOverlapScore = (
+  sourceGenres?: string[],
+  targetGenres?: string[],
+) => {
+  if (!sourceGenres?.length || !targetGenres?.length) return 0
+
+  const targetSet = new Set(targetGenres)
+  const overlap = sourceGenres.filter((genre) => targetSet.has(genre)).length
+  return overlap / Math.max(sourceGenres.length, targetGenres.length)
+}
+
+const normalizeDistance = (distance: number, maxDistance: number) =>
+  Math.max(0, 1 - Math.min(distance, maxDistance) / maxDistance)
+
+export const scoreSimilarFilm = (source: Film, candidate: Film) => {
+  if (source.tmdbId === candidate.tmdbId) return Number.NEGATIVE_INFINITY
+
+  const genreScore = getGenreOverlapScore(source.genres, candidate.genres)
+  const yearScore =
+    source.year && candidate.year
+      ? normalizeDistance(Math.abs(source.year - candidate.year), 35)
+      : 0
+  const ratingScore = normalizeDistance(
+    Math.abs(source.rating - candidate.rating),
+    100,
+  )
+  const popularityScore = normalizeDistance(
+    Math.abs(source.popularity - candidate.popularity),
+    Math.max(source.popularity, candidate.popularity, 1),
+  )
+
+  return (
+    genreScore * 0.52 +
+    yearScore * 0.18 +
+    ratingScore * 0.2 +
+    popularityScore * 0.1
+  )
+}
+
+export const getSimilarFilms = (
+  source: Film,
+  filmBatches: FilmBatches,
+  limit = 6,
+) => {
+  const candidates = [...filmBatches.values()]
+    .flat()
+    .map((filmData) => new Film(filmData))
+
+  return candidates
+    .map((film) => ({
+      film,
+      score: scoreSimilarFilm(source, film),
+    }))
+    .filter(({ score }) => Number.isFinite(score) && score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+}

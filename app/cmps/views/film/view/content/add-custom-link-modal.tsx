@@ -5,6 +5,7 @@ import { DialogFooter } from '../../../../ui/dialog'
 import { useForm } from 'react-hook-form'
 import { useShallowState } from '../../../../../store'
 import { cn } from '../../../../../utils/tw'
+import { isValidCustomLink } from '../../../../../vf'
 import { Modal } from '../../../../common/modal'
 import { Button } from '../../../../ui/button'
 import {
@@ -31,8 +32,19 @@ enum Property {
 }
 
 const formSchema = v.object({
-  name: v.string(),
-  baseUrl: v.string(),
+  name: v.pipe(v.string(), v.trim(), v.minLength(1)),
+  baseUrl: v.pipe(
+    v.string(),
+    v.trim(),
+    v.url(),
+    v.check((value) => {
+      try {
+        return ['http:', 'https:'].includes(new URL(value).protocol)
+      } catch {
+        return false
+      }
+    }),
+  ),
   property: v.enum(Property),
   slug: v.boolean(),
 })
@@ -64,6 +76,8 @@ export function AddCustomLinkModal() {
   })
 
   function onSubmit(values: FormData) {
+    if (!isValidCustomLink(values)) return
+
     const customLinks = userConfig.customLinks ?? []
     const sameNameIndex = customLinks.findIndex(
       ({ name }) => name === values.name,

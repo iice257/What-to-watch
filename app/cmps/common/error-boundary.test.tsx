@@ -66,16 +66,26 @@ describe('ErrorBoundary', () => {
     consoleSpy.mockRestore()
   })
 
-  it('should match snapshot for error state', () => {
+  it('should render stable error state content', () => {
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const { container } = render(
+    render(
       <ErrorBoundary>
         <ThrowError shouldThrow={true} />
       </ErrorBoundary>,
     )
 
-    expect(container.firstChild).toMatchSnapshot()
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument()
+    expect(screen.getByText(/using an older device/)).toBeInTheDocument()
+    expect(screen.getByText(/message: Test error message/)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /reload/i })).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /copy details/i }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: /report issue/i })).toHaveAttribute(
+      'href',
+      'https://github.com/example/repo',
+    )
 
     consoleSpy.mockRestore()
   })

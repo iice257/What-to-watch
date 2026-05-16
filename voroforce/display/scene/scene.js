@@ -71,7 +71,6 @@ export default class Scene extends BaseScene {
   beforeUpdateCustom() {
     this.cellCoordsTexture.needsUpdate = true
     this.cellWeightsTexture.needsUpdate = true
-    this.cellMediaVersionsTexture.needsUpdate = true
   }
 
   afterUpdateCustom() {
