@@ -169,13 +169,13 @@ export const FilmPreview = ({ poster = false }) => {
         positionRef.current.x = easedMinLerp(
           positionRef.current.x,
           targetPosition.x,
-          0.1,
+          0.18,
           MIN_LERP_EASING_TYPES.easeInOutQuad,
         )
         positionRef.current.y = easedMinLerp(
           positionRef.current.y,
           targetPosition.y,
-          0.1,
+          0.18,
           MIN_LERP_EASING_TYPES.easeInOutQuad,
         )
       }
@@ -184,13 +184,13 @@ export const FilmPreview = ({ poster = false }) => {
       scaleRef.current = easedMinLerp(
         scaleRef.current,
         customSpeedScale * scaleMod.current,
-        0.05,
+        0.12,
         MIN_LERP_EASING_TYPES.easeInOutQuad,
       )
       opacityRef.current = easedMinLerp(
         opacityRef.current,
         customSpeedScale,
-        0.05,
+        0.12,
       )
       applyStyles()
 
@@ -272,7 +272,7 @@ export const FilmPreview = ({ poster = false }) => {
         <div
           ref={refFn}
           className={cn(
-            'pointer-events-none fixed top-0 left-0 z-10 w-full max-w-full p-4 opacity-0 transition-opacity duration-700 md:p-9 md:max-lg:landscape:w-auto md:max-lg:landscape:max-w-2/3',
+            'pointer-events-none fixed top-0 left-0 z-10 w-full max-w-full p-4 opacity-0 transition-opacity duration-300 md:p-9 md:max-lg:landscape:w-auto md:max-lg:landscape:max-w-2/3',
             {
               'md:h-52 md:w-300 md:p-0 md:will-change-transform': !isStatic,
               '!opacity-100': isPreviewMode && (hasAppliedStyles || isStatic),

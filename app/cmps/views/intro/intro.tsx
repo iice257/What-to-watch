@@ -22,7 +22,7 @@ export const Intro = () => {
   return (
     <FadeTransition
       className={cn(
-        'fixed inset-x-0 top-0 z-60 flex h-dvh w-full justify-center bg-background px-12 duration-700',
+        'fixed inset-x-0 top-0 z-60 flex h-dvh w-full justify-center bg-background px-12 duration-300',
         {
           '!duration-0': visible,
         },
@@ -30,7 +30,7 @@ export const Intro = () => {
       visible={visible}
       transitionOptions={{
         initialEntered: visible,
-        timeout: visible ? 0 : 700,
+        timeout: visible ? 0 : 300,
       }}
     >
       <div className='flex h-full flex-col items-stretch'>
@@ -69,9 +69,9 @@ export const Intro = () => {
         >
           <FadeTransition
             visible={!hasDeviceClass}
-            className='absolute inset-x-0 bottom-12 w-full duration-1000 max-md:hidden max-lg:landscape:bottom-6'
+            className='absolute inset-x-0 bottom-12 w-full duration-300 max-md:hidden max-lg:landscape:bottom-6'
             transitionOptions={{
-              timeout: 500,
+              timeout: 250,
             }}
           >
             <DeviceClassWidget />
@@ -79,9 +79,9 @@ export const Intro = () => {
           </FadeTransition>
           <FadeTransition
             visible={hasDeviceClass && !preset}
-            className='absolute inset-x-0 bottom-12 w-full duration-1000 max-lg:landscape:bottom-6'
+            className='absolute inset-x-0 bottom-12 w-full duration-300 max-lg:landscape:bottom-6'
             transitionOptions={{
-              timeout: 500,
+              timeout: 250,
             }}
           >
             <SmallScreenWarning />
@@ -104,8 +104,8 @@ const MoviesDatasetLicenseInfo = () => (
   </span>
 )
 
-const DEFAULT_REVEAL_SCREEN_DELAY = 1200
-const DEFAULT_PREVIEW_MODE_REVEAL_SCREEN_DELAY = 600
+const DEFAULT_REVEAL_SCREEN_DELAY = 450
+const DEFAULT_PREVIEW_MODE_REVEAL_SCREEN_DELAY = 250
 let hideScreen = OBSCURE_VISUAL_DEFECTS
 function useIntroVisible() {
   const { introRequired, voroforceMediaPreloaded, revealScreenDelay } =

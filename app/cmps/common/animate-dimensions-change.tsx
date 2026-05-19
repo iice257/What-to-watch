@@ -23,7 +23,7 @@ export const AnimateDimensionsChange: React.FC<
   innerClassName,
   enabled = true,
   style,
-  duration = 300,
+  duration = 180,
   delay = 0,
   ...props
 }) => {
@@ -58,7 +58,7 @@ export const AnimateDimensionsChange: React.FC<
     <div
       {...props}
       className={cn(
-        'overflow-hidden duration-300 ease-out',
+        'overflow-hidden duration-200 ease-out',
         {
           'transition-[height,width] will-change-[height,width]':
             axis === 'both',

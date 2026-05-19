@@ -1,9 +1,9 @@
 export const previewForceSimulationStepConfig = {
   parameters: {
-    alpha: 0.15,
-    velocityDecay: 0.7,
-    velocityDecayBase: 0.7,
-    velocityDecayTransitionEnterMode: 0.9,
+    alpha: 0.24,
+    velocityDecay: 0.55,
+    velocityDecayBase: 0.55,
+    velocityDecayTransitionEnterMode: 0.65,
   },
   forces: {
     manageWeights: true,
@@ -13,7 +13,7 @@ export const previewForceSimulationStepConfig = {
       enabled: true,
     },
     breathing: {
-      enabled: true,
+      enabled: false,
     },
     push: {
       strength: 0.1,

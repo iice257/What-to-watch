@@ -5,10 +5,10 @@ import postFrag from './post-chaos.frag'
 const forceSimulationStepConfigs = {
   [VOROFORCE_MODE.preview]: {
     parameters: {
-      alpha: 0.1,
-      velocityDecay: 0.4,
-      velocityDecayBase: 0.4,
-      velocityDecayTransitionEnterMode: 0.7,
+      alpha: 0.22,
+      velocityDecay: 0.35,
+      velocityDecayBase: 0.35,
+      velocityDecayTransitionEnterMode: 0.5,
     },
     forces: {
       push: {
@@ -23,7 +23,7 @@ const forceSimulationStepConfigs = {
         strength: 0.8,
         yFactor: 1.5,
         xFactor: 1,
-        maxLevelsFromPrimary: 100,
+        maxLevelsFromPrimary: 48,
         cellSizeMod: 20,
       },
       origin: {
@@ -41,10 +41,10 @@ const forceSimulationStepConfigs = {
   },
   [VOROFORCE_MODE.select]: {
     parameters: {
-      alpha: 0.15,
-      velocityDecay: 0.7,
-      velocityDecayBase: 0.7,
-      velocityDecayTransitionEnterMode: 0.7,
+      alpha: 0.28,
+      velocityDecay: 0.5,
+      velocityDecayBase: 0.5,
+      velocityDecayTransitionEnterMode: 0.5,
     },
     forces: {
       push: {
@@ -59,7 +59,7 @@ const forceSimulationStepConfigs = {
         strength: 0.8,
         yFactor: 1.5,
         xFactor: 1,
-        maxLevelsFromPrimary: 100,
+        maxLevelsFromPrimary: 48,
         cellSizeMod: 20,
       },
       origin: {
@@ -73,13 +73,13 @@ const forceSimulationStepConfigs = {
 
 const controlsConfig = {
   default: {
-    maxSpeed: 2,
-    ease: 0.45,
+    maxSpeed: 8,
+    ease: 0.3,
   },
   modes: {
     [VOROFORCE_MODE.select]: {
-      maxSpeed: 1,
-      ease: 0.15,
+      maxSpeed: 6,
+      ease: 0.28,
     },
   },
 }

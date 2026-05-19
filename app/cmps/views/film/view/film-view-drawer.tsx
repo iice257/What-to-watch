@@ -75,9 +75,10 @@ export const FilmViewDrawer = () => {
     if (isSelectMode) {
       mount()
     } else if (voroforce) {
-      setTimeout(() => {
+      const timeout = window.setTimeout(() => {
         mount()
-      }, 5000)
+      }, 700)
+      return () => window.clearTimeout(timeout)
     }
   }, [voroforce, isSelectMode, mountContent])
 

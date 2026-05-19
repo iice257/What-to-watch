@@ -21,7 +21,7 @@ const getRenderPixelRatio = () => {
   const isWindowsChromium =
     /Windows/i.test(userAgent) && /\b(Chrome|Chromium|Edg)\//i.test(userAgent)
 
-  return Math.min(devicePixelRatio, isWindowsChromium ? 1 : 1.5)
+  return Math.min(devicePixelRatio, isWindowsChromium ? 0.85 : 1.25)
 }
 
 export default {

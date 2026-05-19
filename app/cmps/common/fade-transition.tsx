@@ -16,7 +16,7 @@ export const FadeTransition = ({
   transitionOptions?: Partial<Parameters<typeof useTransitionState>[0]>
 }>) => {
   const [{ status, isMounted }, toggle] = useTransitionState({
-    timeout: 1000,
+    timeout: 300,
     ...transitionOptions,
   })
 
@@ -27,7 +27,7 @@ export const FadeTransition = ({
   return (
     isMounted && (
       <div
-        className={cn('transition-opacity duration-700', className, {
+        className={cn('transition-opacity duration-300', className, {
           'opacity-0': status !== 'entered',
           [notEnteredClassName]: status !== 'entered',
         })}
