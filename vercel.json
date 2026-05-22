@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "vite build",
   "framework": "vite",
   "installCommand": "npm install --package-lock=false --legacy-peer-deps",
   "outputDirectory": "dist"
