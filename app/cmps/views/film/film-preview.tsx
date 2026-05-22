@@ -169,13 +169,13 @@ export const FilmPreview = ({ poster = false }) => {
         positionRef.current.x = easedMinLerp(
           positionRef.current.x,
           targetPosition.x,
-          0.18,
+          0.12,
           MIN_LERP_EASING_TYPES.easeInOutQuad,
         )
         positionRef.current.y = easedMinLerp(
           positionRef.current.y,
           targetPosition.y,
-          0.18,
+          0.12,
           MIN_LERP_EASING_TYPES.easeInOutQuad,
         )
       }
@@ -184,13 +184,13 @@ export const FilmPreview = ({ poster = false }) => {
       scaleRef.current = easedMinLerp(
         scaleRef.current,
         customSpeedScale * scaleMod.current,
-        0.12,
+        0.08,
         MIN_LERP_EASING_TYPES.easeInOutQuad,
       )
       opacityRef.current = easedMinLerp(
         opacityRef.current,
         customSpeedScale,
-        0.12,
+        0.08,
       )
       applyStyles()
 

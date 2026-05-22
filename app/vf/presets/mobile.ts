@@ -5,9 +5,9 @@ export const controlModeConfigs: {
   [K in VOROFORCE_MODE]?: VoroforceInstance['controls']['config']
 } = {
   [VOROFORCE_MODE.select]: {
-    maxSpeed: 10,
-    ease: 0.3,
-    easePinned: 0.35,
+    maxSpeed: 7,
+    ease: 0.2,
+    easePinned: 0.25,
     freezeOnShake: {
       enabled: false,
     },
@@ -28,9 +28,9 @@ const defaultControlsConfig = {
     enabled: true,
     random: true,
   },
-  maxSpeed: 12,
-  ease: 0.22,
-  easePinned: 0.28,
+  maxSpeed: 8,
+  ease: 0.14,
+  easePinned: 0.18,
   freezeOnShake: {
     enabled: false,
   },

@@ -1,9 +1,9 @@
 export const previewForceSimulationStepConfig = {
   parameters: {
-    alpha: 0.24,
-    velocityDecay: 0.55,
-    velocityDecayBase: 0.55,
-    velocityDecayTransitionEnterMode: 0.65,
+    alpha: 0.18,
+    velocityDecay: 0.68,
+    velocityDecayBase: 0.68,
+    velocityDecayTransitionEnterMode: 0.8,
   },
   forces: {
     manageWeights: true,

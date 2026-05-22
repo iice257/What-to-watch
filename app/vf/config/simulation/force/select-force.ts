@@ -1,9 +1,9 @@
 export const selectForceSimulationStepConfig = {
   parameters: {
-    alpha: 0.28,
-    velocityDecay: 0.55,
-    velocityDecayBase: 0.55,
-    velocityDecayTransitionEnterMode: 0.6,
+    alpha: 0.2,
+    velocityDecay: 0.72,
+    velocityDecayBase: 0.72,
+    velocityDecayTransitionEnterMode: 0.72,
   },
   forces: {
     manageWeights: true,
@@ -21,7 +21,7 @@ export const selectForceSimulationStepConfig = {
       enabled: false,
     },
     push: {
-      strength: 0.09,
+      strength: 0.06,
       selector: 'focused',
       yFactor: 1.5,
     },
@@ -29,10 +29,10 @@ export const selectForceSimulationStepConfig = {
       strength: 1,
       yFactor: 1.5,
       xFactor: 1,
-      maxLevelsFromPrimary: 32,
+      maxLevelsFromPrimary: 42,
     },
     origin: {
-      strength: 0.16,
+      strength: 0.12,
       latticeScale: 3,
     },
   },

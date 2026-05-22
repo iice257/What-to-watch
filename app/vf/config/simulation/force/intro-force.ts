@@ -2,9 +2,9 @@ export const introForceSimulationStepConfig = {
   parameters: {
     transition: true,
     alpha: 0.8,
-    velocityDecay: 0.6,
-    velocityDecayBase: 0.6,
-    velocityDecayTransitionEnterMode: 0.6,
+    velocityDecay: 0.72,
+    velocityDecayBase: 0.72,
+    velocityDecayTransitionEnterMode: 0.72,
   },
   forces: [
     {
