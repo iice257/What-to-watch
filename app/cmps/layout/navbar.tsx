@@ -1,4 +1,4 @@
-import { GithubIcon, Heart, Info, Settings } from 'lucide-react'
+import { Eye, EyeOff, GithubIcon, Heart, Info, Settings } from 'lucide-react'
 
 import { useShallowState } from '@/store'
 import config from '../../config'
@@ -15,6 +15,8 @@ export const Navbar = () => {
     toggleAboutOpen,
     favoritesOpen,
     toggleFavoritesOpen,
+    uiVisible,
+    toggleUiVisible,
     hasFavorites,
     canChangeTheme,
   } = useShallowState((state) => ({
@@ -24,6 +26,8 @@ export const Navbar = () => {
     toggleAboutOpen: state.toggleAboutOpen,
     favoritesOpen: state.favoritesOpen,
     toggleFavoritesOpen: state.toggleFavoritesOpen,
+    uiVisible: state.uiVisible,
+    toggleUiVisible: state.toggleUiVisible,
     hasFavorites:
       state.userConfig.favorites &&
       Object.keys(state.userConfig.favorites).length > 0,
@@ -37,40 +41,44 @@ export const Navbar = () => {
 
   return (
     <div className='pointer-events-none fixed inset-x-0 bottom-0 z-10 flex w-full flex-row items-center justify-between gap-1 p-3 md:top-0 md:bottom-auto md:z-60 md:justify-end md:px-9 md:py-9'>
-      <Button
-        variant='ghost'
-        size='icon'
-        onClick={toggleAboutOpen}
-        onPointerDown={(event) => {
-          if (aboutOpen) {
-            event.preventDefault()
-            event.stopPropagation()
-          }
-        }}
-        className={cn(buttonClassnames, {
-          'border border-foreground': aboutOpen,
-        })}
-      >
-        <Info />
-      </Button>
-      <div className='flex flex-row gap-1'>
+      {uiVisible && (
         <Button
           variant='ghost'
           size='icon'
-          onClick={toggleSettingsOpen}
+          onClick={toggleAboutOpen}
           onPointerDown={(event) => {
-            if (settingsOpen) {
+            if (aboutOpen) {
               event.preventDefault()
               event.stopPropagation()
             }
           }}
           className={cn(buttonClassnames, {
-            'border border-foreground': settingsOpen,
+            'border border-foreground': aboutOpen,
           })}
         >
-          <Settings />
+          <Info />
         </Button>
-        {hasFavorites && (
+      )}
+      <div className='flex flex-row gap-1'>
+        {uiVisible && (
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={toggleSettingsOpen}
+            onPointerDown={(event) => {
+              if (settingsOpen) {
+                event.preventDefault()
+                event.stopPropagation()
+              }
+            }}
+            className={cn(buttonClassnames, {
+              'border border-foreground': settingsOpen,
+            })}
+          >
+            <Settings />
+          </Button>
+        )}
+        {uiVisible && hasFavorites && (
           <Button
             variant='ghost'
             size='icon'
@@ -88,35 +96,54 @@ export const Navbar = () => {
             <Heart />
           </Button>
         )}
+        <Button
+          variant='ghost'
+          size='icon'
+          aria-label={uiVisible ? 'Hide interface' : 'Show interface'}
+          title={uiVisible ? 'Hide interface' : 'Show interface'}
+          onClick={toggleUiVisible}
+          onPointerDown={(event) => {
+            event.stopPropagation()
+          }}
+          className={cn(buttonClassnames, {
+            'border border-foreground': !uiVisible,
+          })}
+        >
+          {uiVisible ? <EyeOff /> : <Eye />}
+        </Button>
       </div>
 
-      <ThemeToggle
-        className={cn(buttonClassnames, 'hidden md:inline-flex', {
-          'md:hidden': !canChangeTheme,
-        })}
-        onPointerDown={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-      />
-      <Button
-        variant='ghost'
-        size='icon'
-        onClick={toggleSettingsOpen}
-        onPointerDown={(event) => {
-          event.preventDefault()
-          event.stopPropagation()
-        }}
-        className={cn(buttonClassnames, 'hidden md:inline-flex')}
-      >
-        <a
-          href={config.sourceCodeUrl}
-          target='_blank'
-          rel='noreferrer noopener noreferer'
-        >
-          <GithubIcon />
-        </a>
-      </Button>
+      {uiVisible && (
+        <>
+          <ThemeToggle
+            className={cn(buttonClassnames, 'hidden md:inline-flex', {
+              'md:hidden': !canChangeTheme,
+            })}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+          />
+          <Button
+            variant='ghost'
+            size='icon'
+            onClick={toggleSettingsOpen}
+            onPointerDown={(event) => {
+              event.preventDefault()
+              event.stopPropagation()
+            }}
+            className={cn(buttonClassnames, 'hidden md:inline-flex')}
+          >
+            <a
+              href={config.sourceCodeUrl}
+              target='_blank'
+              rel='noreferrer noopener noreferer'
+            >
+              <GithubIcon />
+            </a>
+          </Button>
+        </>
+      )}
     </div>
   )
 }

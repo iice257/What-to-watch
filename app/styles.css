@@ -162,3 +162,45 @@
     @apply !top-auto !right-auto left-4 bottom-4 z-50 !w-sm;
   }
 }
+
+@layer components {
+  .edge-vignette {
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    z-index: 8;
+    contain: strict;
+    background:
+      radial-gradient(ellipse at center, transparent 35%, rgb(0 0 0 / 0.08) 58%, rgb(0 0 0 / 0.24) 100%);
+  }
+
+  .edge-vignette::before {
+    content: "";
+    position: absolute;
+    inset: -2rem;
+    backdrop-filter: blur(16px) saturate(0.9);
+    -webkit-backdrop-filter: blur(16px) saturate(0.9);
+    mask-image: radial-gradient(ellipse at center, transparent 32%, rgb(0 0 0 / 0.16) 46%, black 64%);
+    -webkit-mask-image: radial-gradient(ellipse at center, transparent 32%, rgb(0 0 0 / 0.16) 46%, black 64%);
+  }
+
+  .edge-vignette::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background:
+      linear-gradient(to right, rgb(0 0 0 / 0.2), transparent 12%, transparent 88%, rgb(0 0 0 / 0.2)),
+      linear-gradient(to bottom, rgb(0 0 0 / 0.16), transparent 16%, transparent 84%, rgb(0 0 0 / 0.16));
+  }
+
+  .light .edge-vignette {
+    background:
+      radial-gradient(ellipse at center, transparent 35%, rgb(20 18 16 / 0.07) 58%, rgb(20 18 16 / 0.18) 100%);
+  }
+
+  .light .edge-vignette::after {
+    background:
+      linear-gradient(to right, rgb(20 18 16 / 0.16), transparent 12%, transparent 88%, rgb(20 18 16 / 0.16)),
+      linear-gradient(to bottom, rgb(20 18 16 / 0.12), transparent 16%, transparent 84%, rgb(20 18 16 / 0.12));
+  }
+}

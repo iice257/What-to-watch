@@ -184,6 +184,7 @@ export const omniForce = () => {
         ),
         version: mediaVersion = mediaVersions[0],
         maxTargetVersion: maxTargetMediaVersion = mediaVersionCount - 1,
+        primaryTargetVersion: mediaPrimaryTargetVersion = maxTargetMediaVersion,
         highestSpeedLimit: mediaHighestSpeedLimit = validMediaVersions[
           validMediaVersions.length - 1
         ].speedLimit,
@@ -468,7 +469,7 @@ export const omniForce = () => {
         if (pointerSpeedScale < mediaVMaxSpeedLimit) {
           primaryCell.targetMediaVersion = max(
             primaryCell.targetMediaVersion,
-            maxTargetMediaVersion,
+            mediaPrimaryTargetVersion,
           )
         }
       }

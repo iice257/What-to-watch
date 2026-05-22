@@ -18,6 +18,9 @@ export interface UiSlice {
   favoritesOpen: boolean
   setFavoritesOpen: (favoritesOpen: boolean) => void
   toggleFavoritesOpen: () => void
+  uiVisible: boolean
+  setUiVisible: (uiVisible: boolean) => void
+  toggleUiVisible: () => void
   addCustomLinkTypeOpen: boolean | DialogProps['direction']
   setAddCustomLinkTypeOpen: (open: boolean | DialogProps['direction']) => void
   toggleAddCustomLinkTypeOpen: () => void
@@ -55,6 +58,13 @@ export const createUiSlice: StateCreator<UiSlice, [], [], UiSlice> = (
     },
     toggleFavoritesOpen: () => {
       set({ favoritesOpen: !get().favoritesOpen })
+    },
+    uiVisible: true,
+    setUiVisible: (uiVisible: boolean) => {
+      set({ uiVisible })
+    },
+    toggleUiVisible: () => {
+      set({ uiVisible: !get().uiVisible })
     },
     addCustomLinkTypeOpen: false,
     setAddCustomLinkTypeOpen: (

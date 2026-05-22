@@ -72,6 +72,19 @@ describe('Store', () => {
       )
       expect(persistedSettings).not.toHaveProperty('aboutOpen')
     })
+
+    it('should toggle interface visibility without persisting', () => {
+      const initialState = store.getState().uiVisible
+
+      store.getState().toggleUiVisible()
+
+      expect(store.getState().uiVisible).toBe(!initialState)
+
+      const persistedSettings = JSON.parse(
+        localStorage.getItem('settings') || '{}',
+      )
+      expect(persistedSettings).not.toHaveProperty('uiVisible')
+    })
   })
 
   describe('Device class', () => {
