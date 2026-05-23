@@ -1,6 +1,11 @@
 import type { THEME } from '../consts'
-import type { UserConfig, VOROFORCE_PRESET } from '../vf'
-import type { CELL_LIMIT, DEVICE_CLASS } from '../vf/consts'
+import type { UserConfig } from '../vf'
+import {
+  CELL_LIMIT,
+  DEFAULT_VOROFORCE_PRESET,
+  DEVICE_CLASS,
+  type VOROFORCE_PRESET,
+} from '../vf/consts'
 
 // Version for migration tracking
 const SETTINGS_VERSION = 1
@@ -59,7 +64,7 @@ export const getPersistentSettings = (): PersistentSettings => {
         return migrateSettings(parsed)
       }
 
-      return parsed
+      return normalizeSettings(parsed)
     }
 
     // If no consolidated settings, try to migrate from legacy keys
@@ -95,7 +100,7 @@ export const getPersistentSettings = (): PersistentSettings => {
       // Clean up legacy keys
       cleanupLegacyKeys()
 
-      return migrated
+      return normalizeSettings(migrated)
     }
 
     // Return defaults if no existing data
@@ -154,9 +159,34 @@ const migrateSettings = (
 const getDefaultSettings = (): PersistentSettings => ({
   version: SETTINGS_VERSION,
   theme: 'dark' as THEME,
-  playedIntro: false,
+  playedIntro: true,
+  preset: DEFAULT_VOROFORCE_PRESET,
+  cellLimit: CELL_LIMIT.xxs,
+  deviceClass: DEVICE_CLASS.low,
   userConfig: {},
 })
+
+const normalizeSettings = (
+  settings: PersistentSettings,
+): PersistentSettings => {
+  const normalized = {
+    ...getDefaultSettings(),
+    ...settings,
+    userConfig: settings.userConfig ?? {},
+  }
+
+  if (
+    normalized.preset !== settings.preset ||
+    normalized.cellLimit !== settings.cellLimit ||
+    normalized.deviceClass !== settings.deviceClass ||
+    normalized.playedIntro !== settings.playedIntro ||
+    normalized.userConfig !== settings.userConfig
+  ) {
+    setPersistentSettings(normalized)
+  }
+
+  return normalized
+}
 
 // Clean up legacy storage keys after migration
 const cleanupLegacyKeys = (): void => {

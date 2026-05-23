@@ -114,10 +114,16 @@ const handleIntro = () => {
           (0.5 - Math.random()) * 0.05 * dimensions.get('height'),
       }
 
-      waitForVoroforceTicks(INTRO_PREVIEW_WARMUP_TICKS, () => {
+      let revealed = false
+      const revealIntro = () => {
+        if (revealed) return
+        revealed = true
         revealVoroforceContainer()
         setPlayedIntro(true)
-      })
+      }
+
+      waitForVoroforceTicks(INTRO_PREVIEW_WARMUP_TICKS, revealIntro)
+      window.setTimeout(revealIntro, PRELOAD_REVEAL_FALLBACK_MS)
     }, INTRO_LATTICE_SETTLE_MS)
   }, 1000)
 }
