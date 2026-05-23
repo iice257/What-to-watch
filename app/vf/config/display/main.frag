@@ -68,7 +68,7 @@ precision highp float;
 #define MEDIA_ROTATE 0
 #define MEDIA_ROTATE_FACTOR 1.
 #define MEDIA_BULGE_MODE 0 // todo other media bulge modes
-#define MEDIA_BBOX_OVERFLOW_MODE 3 // 0 = debug (red), 1 = clamp edges, 2 = tiles, 3 = flipped tiles
+#define MEDIA_BBOX_OVERFLOW_MODE 1 // 0 = debug (red), 1 = clamp edges, 2 = tiles, 3 = flipped tiles
 
 #define EDGES_VISIBLE 1
 #define EDGE_SMIN_SCALING 1

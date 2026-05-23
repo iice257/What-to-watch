@@ -9,17 +9,19 @@ import { Settings } from './settings'
 const PrimaryViews = () => {
   const uiVisible = useShallowState((state) => state.uiVisible)
 
-  if (!uiVisible) return null
-
   return (
     <>
-      <Settings />
-      <About />
-      <Favorites />
       <FilmPreview />
-      <FilmViewDrawer />
-      <LowFpsAlert />
-      <HotkeysView />
+      {uiVisible && (
+        <>
+          <Settings />
+          <About />
+          <Favorites />
+          <FilmViewDrawer />
+          <LowFpsAlert />
+          <HotkeysView />
+        </>
+      )}
     </>
   )
 }

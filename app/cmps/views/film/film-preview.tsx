@@ -26,11 +26,12 @@ export const FilmPreview = ({ poster = false }) => {
   const isStatic = isSmallScreen || isOnlyMdLandscapeScreen
   const [dimensionsRef, dimensions] = useDimensions()
 
-  const { film, isPreviewMode, config, voroforce } = useShallowState(
+  const { film, isPreviewMode, config, uiVisible, voroforce } = useShallowState(
     (state) => ({
       film: state.film,
       isPreviewMode: selectIsPreviewMode(state),
       config: state.config?.filmPreview,
+      uiVisible: state.uiVisible,
       voroforce: state.voroforce,
     }),
   )
@@ -107,7 +108,7 @@ export const FilmPreview = ({ poster = false }) => {
     setHasAppliedStyles(true)
     containerRef.current.style.translate = `${positionRef.current.x}px ${positionRef.current.y}px`
     innerRef.current.style.scale = `${scaleRef.current}`
-    innerRef.current.style.opacity = `${scaleRef.current}`
+    innerRef.current.style.opacity = `${opacityRef.current}`
   }, [])
 
   useEffect(() => {
@@ -268,6 +269,25 @@ export const FilmPreview = ({ poster = false }) => {
 
   return (
     <>
+      {film && !uiVisible && (
+        <div className='pointer-events-none fixed inset-x-4 bottom-16 z-20 flex justify-center md:top-9 md:bottom-auto md:justify-start'>
+          <div className='max-w-full rounded-md border border-white/10 bg-black/62 px-3 py-2 text-white shadow-2xl shadow-black/40 backdrop-blur-md'>
+            <div className='truncate font-black text-lg leading-none md:max-w-[32rem] md:text-2xl'>
+              {film.title}
+              {film.year ? (
+                <span className='font-medium text-white/55'>
+                  &nbsp;({film.year})
+                </span>
+              ) : null}
+            </div>
+            {film.tagline ? (
+              <div className='mt-1 line-clamp-1 text-sm text-white/70 italic leading-tight'>
+                {film.tagline}
+              </div>
+            ) : null}
+          </div>
+        </div>
+      )}
       {film && (
         <div
           ref={refFn}
@@ -275,7 +295,8 @@ export const FilmPreview = ({ poster = false }) => {
             'pointer-events-none fixed top-0 left-0 z-10 w-full max-w-full p-4 opacity-0 transition-opacity duration-300 md:p-9 md:max-lg:landscape:w-auto md:max-lg:landscape:max-w-2/3',
             {
               'md:h-52 md:w-300 md:p-0 md:will-change-transform': !isStatic,
-              '!opacity-100': isPreviewMode && (hasAppliedStyles || isStatic),
+              '!opacity-100':
+                uiVisible && isPreviewMode && (hasAppliedStyles || isStatic),
             },
           )}
         >
