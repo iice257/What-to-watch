@@ -247,7 +247,7 @@ export default class BaseControls extends CustomEventTarget {
       }
     }
 
-    if (selectedCellIndex) {
+    if (selectedCellIndex !== undefined) {
       this.cells.selectedIndex = selectedCellIndex
       this.dispatchEvent(new CellSelectedEvent(this.cells.selected))
       this.logger?.debug('select cell', this.cells.selectedIndex)

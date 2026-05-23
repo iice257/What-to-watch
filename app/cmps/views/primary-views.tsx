@@ -12,12 +12,12 @@ const PrimaryViews = () => {
   return (
     <>
       <FilmPreview />
+      <FilmViewDrawer />
       {uiVisible && (
         <>
           <Settings />
           <About />
           <Favorites />
-          <FilmViewDrawer />
           <LowFpsAlert />
           <HotkeysView />
         </>

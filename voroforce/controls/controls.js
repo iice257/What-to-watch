@@ -467,7 +467,7 @@ export default class Controls extends BaseControls {
       }
     }
 
-    if (selectCellIndex) {
+    if (selectCellIndex !== undefined) {
       this.selectCell(selectCellIndex)
       if (hasPreviousSelection) {
         this.pinPointer(this.cells.selected)

@@ -11,6 +11,14 @@ const mediaConfig = {
   baseUrl: import.meta.env.VITE_TEXTURES_BASE_URL ?? '/media',
   preload: 'first', // 'v0', 'first' or false
   compressionFormat: 'dds', // or 'ktx'
+  randomCellSelection: {
+    enabled: true,
+    count: parsePositiveIntEnv(import.meta.env.VITE_RANDOM_MOVIE_COUNT, 5000),
+    poolSize: parsePositiveIntEnv(
+      import.meta.env.VITE_RANDOM_MOVIE_POOL_SIZE,
+      parsePositiveIntEnv(import.meta.env.VITE_FILM_INFO_LAYERS, 1) * 18 * 12,
+    ),
+  },
   versions: [
     {
       cols: 512,

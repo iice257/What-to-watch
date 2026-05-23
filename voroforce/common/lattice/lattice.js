@@ -53,6 +53,27 @@ export function packLattice(cells, latticeConfig, immediate = false) {
   return cells
 }
 
+const createRandomCellIds = (latticeConfig, count, poolSize) => {
+  if (
+    latticeConfig._randomCellIds?.length >= count &&
+    latticeConfig._randomCellIdPoolSize === poolSize
+  ) {
+    return latticeConfig._randomCellIds
+  }
+
+  const ids = Array.from({ length: poolSize }, (_, index) => index)
+  for (let index = 0; index < count; index++) {
+    const swapIndex = index + Math.floor(Math.random() * (poolSize - index))
+    const value = ids[index]
+    ids[index] = ids[swapIndex]
+    ids[swapIndex] = value
+  }
+
+  latticeConfig._randomCellIds = ids.slice(0, count)
+  latticeConfig._randomCellIdPoolSize = poolSize
+  return latticeConfig._randomCellIds
+}
+
 /**
  * Generates subgrids of 18x12 elements from the center outward
  * @param {Object} latticeConfig - Lattice config
@@ -82,6 +103,14 @@ export function generateCenterOutwardSubgridsAndAssignCellIds(
   const SUBGRID_COLS = subgridConfig.cols // 12
   const SUBGRID_SIZE = SUBGRID_ROWS * SUBGRID_COLS
   const SUBGRID_MAX_SUPPORTED_CAPACITY = subgridConfig.totalCapacity
+  const randomCellSelection = latticeConfig.randomCellSelection
+  const randomCellIds = randomCellSelection?.enabled
+    ? createRandomCellIds(
+        latticeConfig,
+        Math.min(elementCount, randomCellSelection.poolSize),
+        Math.min(randomCellSelection.poolSize, SUBGRID_MAX_SUPPORTED_CAPACITY),
+      )
+    : undefined
 
   // Result array to store coordinates
   const result = []
@@ -127,10 +156,11 @@ export function generateCenterOutwardSubgridsAndAssignCellIds(
           if (cell) {
             result.push([row, col])
 
-            currentSubgrid = Math.floor(currentCellId / SUBGRID_SIZE)
-            currentSubgridIndex = Math.floor(currentCellId % SUBGRID_SIZE)
-            if (!cell.id) {
-              cell.id = currentCellId
+            const cellId = randomCellIds?.[currentCellId] ?? currentCellId
+            currentSubgrid = Math.floor(cellId / SUBGRID_SIZE)
+            currentSubgridIndex = Math.floor(cellId % SUBGRID_SIZE)
+            if (cell.id === undefined) {
+              cell.id = cellId
               cell.subgrid = currentSubgrid // for json and media v2 layers
               cell.subgridIndex = currentSubgridIndex
             }
@@ -357,6 +387,7 @@ export const handleLattice = (globalConfig, cells, width, height) => {
         totalCapacity: 9999999,
       },
     )
+  config.randomCellSelection = globalConfig.media.randomCellSelection
 
   const prevRows = config.rows
   const prevCols = config.cols

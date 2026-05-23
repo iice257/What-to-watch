@@ -6,6 +6,13 @@ type ErrorBoundaryState = {
   error: Error | null
 }
 
+const moduleLoadErrorPatterns = [
+  'Importing a module script failed',
+  'Failed to fetch dynamically imported module',
+  'error loading dynamically imported module',
+]
+const MODULE_LOAD_RELOAD_KEY = 'what-to-watch:module-load-reloaded'
+
 export class ErrorBoundary extends React.Component<
   React.PropsWithChildren,
   ErrorBoundaryState
@@ -21,6 +28,18 @@ export class ErrorBoundary extends React.Component<
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error', error, info)
+    const isModuleLoadError = moduleLoadErrorPatterns.some((pattern) =>
+      error.message.includes(pattern),
+    )
+    if (
+      isModuleLoadError &&
+      sessionStorage.getItem(MODULE_LOAD_RELOAD_KEY) !== '1'
+    ) {
+      sessionStorage.setItem(MODULE_LOAD_RELOAD_KEY, '1')
+      window.location.reload()
+      return
+    }
+
     try {
       telemetry.captureError(error, {
         source: 'ErrorBoundary',

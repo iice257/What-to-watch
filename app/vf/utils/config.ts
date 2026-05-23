@@ -110,9 +110,14 @@ export const getVoroforceConfig = (state: StoreState) => {
     handleCustomLinkParam(customLinkBase64Param, state)
   }
 
+  const randomCellSelection = config.media?.randomCellSelection
+  const defaultCellLimit = randomCellSelection?.enabled
+    ? Math.min(randomCellSelection.count, randomCellSelection.poolSize)
+    : config.cells
+
   config.cells = cellsOverrideParam
     ? Number.parseInt(cellsOverrideParam)
-    : (cellLimit ?? config.cells)
+    : Math.min(cellLimit ?? config.cells, defaultCellLimit)
 
   if ('devTools' in userConfig) {
     config.devTools.enabled = !!userConfig.devTools
