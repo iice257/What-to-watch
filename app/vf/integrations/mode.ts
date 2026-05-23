@@ -15,7 +15,11 @@ const PRELOAD_REVEAL_FALLBACK_MS = 8000
 export const revealVoroforceContainer = () => {
   const state = store.getState()
   const container = state.container ?? document.getElementById('voroforce')
-  container?.classList.add('vf-scene-ready')
+  if (container) {
+    container.classList.add('vf-scene-ready')
+    container.style.opacity = '1'
+    container.style.pointerEvents = 'auto'
+  }
   state.setVoroforceMediaPreloaded(true)
   if (!state.playedIntro) {
     state.setPlayedIntro(true)
