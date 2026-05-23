@@ -8,6 +8,8 @@ import { updateControlsByMode } from './controls'
 
 const INTRO_LATTICE_SETTLE_MS = 250
 const INTRO_PREVIEW_WARMUP_TICKS = 2
+const MODE_INIT_RETRY_MS = 100
+const MODE_INIT_RETRY_LIMIT = 100
 const PRELOAD_REVEAL_FALLBACK_MS = 8000
 
 export const revealVoroforceContainer = () => {
@@ -85,10 +87,15 @@ const handleModeChange = (mode: VOROFORCE_MODE): void => {
     simulation.updateForceStepConfig(forceStepConfig)
   }
 }
-const handleIntro = () => {
+const handleIntro = (attempt = 0) => {
   const { voroforce, setPlayedIntro } = store.getState()
 
-  if (!voroforce?.controls || !voroforce?.dimensions) return
+  if (!voroforce?.controls || !voroforce?.dimensions) {
+    if (attempt < MODE_INIT_RETRY_LIMIT) {
+      window.setTimeout(() => handleIntro(attempt + 1), MODE_INIT_RETRY_MS)
+    }
+    return
+  }
 
   const { controls, dimensions } = voroforce
 
@@ -128,10 +135,15 @@ const handleIntro = () => {
   }, 1000)
 }
 
-export const handleMode = () => {
+export const handleMode = (attempt = 0) => {
   const { mode: initialMode, voroforce, config } = store.getState()
 
-  if (!voroforce?.loader || !voroforce?.ticker) return
+  if (!voroforce?.loader || !voroforce?.ticker) {
+    if (attempt < MODE_INIT_RETRY_LIMIT) {
+      window.setTimeout(() => handleMode(attempt + 1), MODE_INIT_RETRY_MS)
+    }
+    return
+  }
 
   const { loader, ticker } = voroforce
 
