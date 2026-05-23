@@ -144,8 +144,9 @@ export const handleMode = () => {
       const revealAfterUpload = () => {
         if (revealed) return
         revealed = true
-        // media will be uploaded to gpu on the next tick
+        // Prefer one tick for GPU upload, but never let a missed tick trap the intro.
         ticker.listenOnce('tick', revealVoroforceContainer)
+        window.setTimeout(revealVoroforceContainer, 250)
       }
 
       loader.listenOnce('preloaded', revealAfterUpload)
