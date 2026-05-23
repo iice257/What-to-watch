@@ -6,14 +6,29 @@ import { VOROFORCE_MODE } from '../consts'
 import type { VoroforceCell } from '../types'
 import { updateControlsByMode } from './controls'
 
+const INTRO_LATTICE_SETTLE_MS = 250
+const INTRO_PREVIEW_WARMUP_TICKS = 2
+
 export const revealVoroforceContainer = () => {
-  // store.getState().container.classList.remove('opacity-0')
+  store.getState().container?.classList.add('vf-scene-ready')
   store.setState({
     voroforceMediaPreloaded: true,
   })
 }
 
 let afterModeChangeTimeout: NodeJS.Timeout
+
+const waitForVoroforceTicks = (count: number, callback: () => void) => {
+  const ticker = store.getState().voroforce?.ticker
+  if (!ticker || count <= 0) {
+    callback()
+    return
+  }
+
+  ticker.listenOnce('tick', () => {
+    waitForVoroforceTicks(count - 1, callback)
+  })
+}
 
 const handleModeChange = (mode: VOROFORCE_MODE): void => {
   const {
@@ -86,9 +101,6 @@ const handleIntro = () => {
     }
     voroforce.resize()
 
-    revealVoroforceContainer()
-    setPlayedIntro(true)
-
     setTimeout(() => {
       handleModeChange(VOROFORCE_MODE.preview)
 
@@ -100,7 +112,12 @@ const handleIntro = () => {
           dimensions.get('height') / 2 +
           (0.5 - Math.random()) * 0.05 * dimensions.get('height'),
       }
-    }, 3000)
+
+      waitForVoroforceTicks(INTRO_PREVIEW_WARMUP_TICKS, () => {
+        revealVoroforceContainer()
+        setPlayedIntro(true)
+      })
+    }, INTRO_LATTICE_SETTLE_MS)
   }, 1000)
 }
 

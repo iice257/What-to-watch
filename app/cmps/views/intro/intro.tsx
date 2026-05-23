@@ -22,7 +22,7 @@ export const Intro = () => {
   return (
     <FadeTransition
       className={cn(
-        'fixed inset-x-0 top-0 z-60 flex h-dvh w-full justify-center bg-background px-12 duration-300',
+        'fixed inset-x-0 top-0 z-60 flex h-dvh w-full justify-center bg-background px-12 duration-700',
         {
           '!duration-0': visible,
         },
@@ -30,7 +30,7 @@ export const Intro = () => {
       visible={visible}
       transitionOptions={{
         initialEntered: visible,
-        timeout: visible ? 0 : 300,
+        timeout: visible ? 0 : 700,
       }}
     >
       <div className='flex h-full flex-col items-stretch'>
@@ -104,8 +104,8 @@ const MoviesDatasetLicenseInfo = () => (
   </span>
 )
 
-const DEFAULT_REVEAL_SCREEN_DELAY = 450
-const DEFAULT_PREVIEW_MODE_REVEAL_SCREEN_DELAY = 250
+const DEFAULT_REVEAL_SCREEN_DELAY = 700
+const DEFAULT_PREVIEW_MODE_REVEAL_SCREEN_DELAY = 500
 let hideScreen = OBSCURE_VISUAL_DEFECTS
 function useIntroVisible() {
   const { introRequired, voroforceMediaPreloaded, revealScreenDelay } =
