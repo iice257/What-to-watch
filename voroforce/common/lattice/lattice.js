@@ -156,12 +156,13 @@ export function generateCenterOutwardSubgridsAndAssignCellIds(
           if (cell) {
             result.push([row, col])
 
-            const cellId = randomCellIds?.length
+            const metadataCellId = randomCellIds?.length
               ? randomCellIds[currentCellId % randomCellIds.length]
               : currentCellId
-            currentSubgrid = Math.floor(cellId / SUBGRID_SIZE)
-            currentSubgridIndex = Math.floor(cellId % SUBGRID_SIZE)
-            cell.id = cellId
+            const mediaCellId = metadataCellId % SUBGRID_SIZE
+            currentSubgrid = Math.floor(metadataCellId / SUBGRID_SIZE)
+            currentSubgridIndex = Math.floor(metadataCellId % SUBGRID_SIZE)
+            cell.id = mediaCellId
             cell.subgrid = currentSubgrid // for json and media v2 layers
             cell.subgridIndex = currentSubgridIndex
 

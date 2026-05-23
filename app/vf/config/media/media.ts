@@ -16,7 +16,7 @@ const mediaConfig = {
     count: parsePositiveIntEnv(import.meta.env.VITE_RANDOM_MOVIE_COUNT, 15000),
     poolSize: parsePositiveIntEnv(
       import.meta.env.VITE_RANDOM_MOVIE_POOL_SIZE,
-      parsePositiveIntEnv(import.meta.env.VITE_FILM_INFO_LAYERS, 1) * 18 * 12,
+      1000,
     ),
   },
   versions: [

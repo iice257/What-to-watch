@@ -4,6 +4,8 @@ import { VOROFORCE_MODE } from '../../consts'
 export const baseLatticeConfig = {
   enabled: true,
   aspect: 2 / 3,
+  autoTargetMediaVersion2SubgridCount: 999999,
+  autoTargetMediaVersion1SubgridCount: 999999,
   modes: {
     [VOROFORCE_MODE.intro]: {},
   },
