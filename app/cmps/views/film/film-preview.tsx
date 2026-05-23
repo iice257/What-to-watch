@@ -267,6 +267,47 @@ export const FilmPreview = ({ poster = false }) => {
     [dimensionsRef],
   )
 
+  if (!poster) {
+    return film ? (
+      <div className='pointer-events-none fixed inset-x-3 bottom-14 z-20 flex justify-center md:inset-x-0 md:top-9 md:bottom-auto md:justify-start md:px-9'>
+        <div className='flex max-w-full items-center gap-3 rounded-md border border-white/10 bg-black/72 p-2.5 pr-3 text-white shadow-2xl shadow-black/40 backdrop-blur-md md:max-w-[34rem] md:gap-4 md:p-3'>
+          <FilmPoster
+            film={film}
+            className='h-24 w-16 shrink-0 rounded-sm object-cover shadow-black/40 shadow-lg md:h-32 md:w-[5.35rem]'
+          />
+          <div className='min-w-0 flex-1'>
+            <div className='truncate font-black text-lg leading-none md:text-2xl'>
+              {film.title}
+              {film.year ? (
+                <span className='font-medium text-white/55'>
+                  &nbsp;({film.year})
+                </span>
+              ) : null}
+            </div>
+            {film.tagline ? (
+              <div className='mt-1 line-clamp-2 text-sm text-white/75 italic leading-tight md:line-clamp-1'>
+                {film.tagline}
+              </div>
+            ) : null}
+            <div className='mt-2 flex min-w-0 flex-wrap items-center gap-2'>
+              {film.genres?.slice(0, 3).map((genre) => (
+                <Badge
+                  key={genre}
+                  className='max-w-full truncate text-[0.6rem] leading-none'
+                >
+                  {genre}
+                </Badge>
+              ))}
+              <div className='ml-auto hidden md:block'>
+                <FilmRatingGauge value={film.rating} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    ) : null
+  }
+
   return (
     <>
       {film && !uiVisible && (
@@ -337,7 +378,7 @@ export const FilmPreview = ({ poster = false }) => {
                 <p className='line-clamp-2 hidden font-medium text-base text-foreground/90 leading-none md:inline-block lg:line-clamp-1 lg:h-[1.25rem] lg:text-xl lg:leading-none landscape:h-[1rem] lg:landscape:h-[1.25rem]'>
                   {film.tagline}
                 </p>
-                <h3 className='line-clamp-2.2 font-black text-2xl leading-none lg:line-clamp-1.1 lg:text-5xl landscape:line-clamp-1.1'>
+                <h3 className='line-clamp-2 font-black text-2xl leading-none lg:line-clamp-1 lg:text-5xl landscape:line-clamp-1'>
                   {film.title}
                   <span className='font-normal text-foreground/50 text-xl leading-none lg:text-3xl'>
                     &nbsp;({film.year})

@@ -18,34 +18,55 @@ export const handleControls = () => {
 
   if (!voroforce?.controls) return
 
-  const { controls } = voroforce
+  const { controls, ticker } = voroforce
   let focusedFilmRequest = 0
   let selectedFilmRequest = 0
 
-  controls.listen('focused', (async ({ cell }: { cell: VoroforceCell }) => {
+  const setFocusedFilm = async (cell?: VoroforceCell) => {
     const requestId = ++focusedFilmRequest
     if (!cell) return
     const film = await getCellFilm(cell, filmBatches)
     if (requestId === focusedFilmRequest && controls.cells?.focused === cell) {
       setFilm(film)
     }
+  }
+
+  const setSelectedFilm = async (cell?: VoroforceCell) => {
+    const requestId = ++selectedFilmRequest
+    if (!cell) return
+    const film = await getCellFilm(cell, filmBatches)
+    if (
+      requestId === selectedFilmRequest &&
+      controls.cells?.selected === cell
+    ) {
+      setFilm(film)
+    }
+  }
+
+  const syncCurrentFilm = () => {
+    const selectedCell = controls.cells?.selected
+    if (selectedCell) {
+      void setSelectedFilm(selectedCell)
+      return
+    }
+    void setFocusedFilm(controls.cells?.focused)
+  }
+
+  controls.listen('focused', (async ({ cell }: { cell: VoroforceCell }) => {
+    await setFocusedFilm(cell)
   }) as unknown as EventListener)
 
   controls.listen('selected', (async ({ cell }: { cell: VoroforceCell }) => {
-    const requestId = ++selectedFilmRequest
     if (cell) {
-      const film = await getCellFilm(cell, filmBatches)
-      if (
-        requestId === selectedFilmRequest &&
-        controls.cells?.selected === cell
-      ) {
-        setFilm(film)
-      }
+      await setSelectedFilm(cell)
       // controls.pinPointer()
     } else {
       // controls.unpinPointer()
     }
   }) as unknown as EventListener)
+
+  syncCurrentFilm()
+  ticker?.listenOnce('tick', syncCurrentFilm)
 
   controls.listen('pointerFrozenChange', (async ({
     frozen,

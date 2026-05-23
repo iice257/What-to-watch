@@ -125,10 +125,10 @@ export default {
                 value: 0,
               },
               [VOROFORCE_MODE.preview]: {
-                value: 1.125,
+                value: 0.55,
               },
               [VOROFORCE_MODE.select]: {
-                value: 1.125,
+                value: 0.7,
               },
             },
           },
@@ -143,10 +143,10 @@ export default {
                 value: 0,
               },
               [VOROFORCE_MODE.preview]: {
-                value: 1,
+                value: 0.8,
               },
               [VOROFORCE_MODE.select]: {
-                value: 1.75,
+                value: 1.15,
               },
             },
           },
