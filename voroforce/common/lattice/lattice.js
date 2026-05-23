@@ -54,14 +54,18 @@ export function packLattice(cells, latticeConfig, immediate = false) {
 }
 
 const createRandomCellIds = (latticeConfig, count, poolSize) => {
+  const sourceIds = latticeConfig.randomCellSelection?.poolIds
   if (
     latticeConfig._randomCellIds?.length >= count &&
-    latticeConfig._randomCellIdPoolSize === poolSize
+    latticeConfig._randomCellIdPoolSize === poolSize &&
+    latticeConfig._randomCellIdSourceIds === sourceIds
   ) {
     return latticeConfig._randomCellIds
   }
 
-  const ids = Array.from({ length: poolSize }, (_, index) => index)
+  const ids = sourceIds
+    ? sourceIds.slice(0, poolSize)
+    : Array.from({ length: poolSize }, (_, index) => index)
   for (let index = 0; index < count; index++) {
     const swapIndex = index + Math.floor(Math.random() * (poolSize - index))
     const value = ids[index]
@@ -71,6 +75,7 @@ const createRandomCellIds = (latticeConfig, count, poolSize) => {
 
   latticeConfig._randomCellIds = ids.slice(0, count)
   latticeConfig._randomCellIdPoolSize = poolSize
+  latticeConfig._randomCellIdSourceIds = sourceIds
   return latticeConfig._randomCellIds
 }
 
@@ -107,8 +112,14 @@ export function generateCenterOutwardSubgridsAndAssignCellIds(
   const randomCellIds = randomCellSelection?.enabled
     ? createRandomCellIds(
         latticeConfig,
-        Math.min(elementCount, randomCellSelection.poolSize),
-        Math.min(randomCellSelection.poolSize, SUBGRID_MAX_SUPPORTED_CAPACITY),
+        Math.min(
+          elementCount,
+          randomCellSelection.poolIds?.length ?? randomCellSelection.poolSize,
+        ),
+        Math.min(
+          randomCellSelection.poolIds?.length ?? randomCellSelection.poolSize,
+          SUBGRID_MAX_SUPPORTED_CAPACITY,
+        ),
       )
     : undefined
 

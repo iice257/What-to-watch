@@ -8,6 +8,8 @@ import { cn } from '../../../../../utils/tw'
 import {
   type DiscoveryTag,
   type Film,
+  assignFilmToCell,
+  findFilmLocation,
   getDiscoveryTags,
   getSimilarFilms,
 } from '../../../../../vf'
@@ -36,7 +38,11 @@ export const FilmView = ({
 
   const filmRef = useRef<Film>(undefined)
   const ua = store((state) => state.ua)
-  const filmBatches = useShallowState((state) => state.filmBatches)
+  const { filmBatches, setFilm, voroforce } = useShallowState((state) => ({
+    filmBatches: state.filmBatches,
+    setFilm: state.setFilm,
+    voroforce: state.voroforce,
+  }))
 
   const [backdropHidden, setBackdropHidden] = useState(true)
   const [backdropErrored, setBackdropErrored] = useState(true)
@@ -57,6 +63,33 @@ export const FilmView = ({
     () => (film ? getDiscoveryTags(film).slice(0, 3) : []),
     [film],
   )
+
+  const navigateToSimilarFilm = (similarFilm: Film) => {
+    const location = findFilmLocation(similarFilm, filmBatches)
+    const cells = voroforce?.cells
+    const controls = voroforce?.controls
+    if (!location || !cells?.length || !controls) return
+
+    const origin = controls.cells?.selected ?? controls.cells?.focused
+    const farCells = origin
+      ? [...cells]
+          .sort((a, b) => {
+            const aDistance = (a.x - origin.x) ** 2 + (a.y - origin.y) ** 2
+            const bDistance = (b.x - origin.x) ** 2 + (b.y - origin.y) ** 2
+            return bDistance - aDistance
+          })
+          .slice(0, Math.max(1, Math.floor(cells.length * 0.25)))
+      : [...cells]
+
+    const targetCell =
+      farCells[Math.floor(Math.random() * farCells.length)] ?? cells[0]
+    assignFilmToCell(targetCell, location)
+    const cellIdsTexture = voroforce.display?.scene?.cellIdsTexture
+    if (cellIdsTexture) cellIdsTexture.needsUpdate = true
+    controls.navigateToCell(targetCell)
+    controls.selectCell(targetCell)
+    setFilm(similarFilm)
+  }
 
   if (!film) return
 
@@ -177,9 +210,11 @@ export const FilmView = ({
                 </h4>
                 <div className='flex flex-wrap gap-2'>
                   {similarFilms.map(({ film: similarFilm, reasons }) => (
-                    <div
+                    <button
+                      type='button'
                       key={similarFilm.tmdbId}
-                      className='max-w-full rounded-md border border-foreground/20 bg-background/20 px-2 py-1.5 text-foreground/80 leading-tight backdrop-blur-sm'
+                      className='max-w-full cursor-pointer rounded-md border border-foreground/20 bg-background/20 px-2 py-1.5 text-left text-foreground/80 leading-tight backdrop-blur-sm transition-colors hover:bg-background/45 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                      onClick={() => navigateToSimilarFilm(similarFilm)}
                     >
                       <div className='truncate font-medium'>
                         {similarFilm.title}
@@ -190,7 +225,7 @@ export const FilmView = ({
                           {reasons.join(' / ')}
                         </div>
                       )}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

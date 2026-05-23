@@ -1,5 +1,6 @@
 import { mergeConfigs } from '√'
 import baseConfig from '../config'
+import { MOVIE_FILTER_INDEX } from '../data/movie-filter-index'
 import presets from '../presets'
 
 import type { THEME } from '../../consts'
@@ -18,6 +19,15 @@ export type CustomLink = {
   baseUrl: string
   slug: boolean
   property: 'title' | 'tmdbId' | 'imdbId'
+}
+
+export type MovieLengthFilter = 'short' | 'feature' | 'long'
+
+export type MovieFilters = {
+  genre?: string
+  yearFrom?: number
+  yearTo?: number
+  length?: MovieLengthFilter
 }
 
 const customLinkProperties = ['title', 'tmdbId', 'imdbId'] as const
@@ -47,6 +57,7 @@ export const isValidCustomLink = (value: unknown): value is CustomLink => {
 export type UserConfig = {
   cells?: number
   devTools?: boolean
+  movieFilters?: MovieFilters
   customLinks?: CustomLink[]
   favorites?: {
     [key: Film['tmdbId']]: {
@@ -59,6 +70,35 @@ export type UserConfig = {
       poster?: Film['poster']
     }
   }
+}
+
+const hasMovieFilters = (filters?: MovieFilters) =>
+  Boolean(
+    filters?.genre || filters?.yearFrom || filters?.yearTo || filters?.length,
+  )
+
+const matchesLengthFilter = (runtime: number, length?: MovieLengthFilter) => {
+  if (!length) return true
+  if (!runtime) return false
+  if (length === 'short') return runtime < 90
+  if (length === 'long') return runtime >= 150
+  return runtime >= 90 && runtime < 150
+}
+
+export const getFilteredMovieIds = (filters?: MovieFilters) => {
+  if (!hasMovieFilters(filters)) return
+
+  const yearFrom = filters?.yearFrom ?? Number.NEGATIVE_INFINITY
+  const yearTo = filters?.yearTo ?? Number.POSITIVE_INFINITY
+  const ids = MOVIE_FILTER_INDEX.filter((entry) => {
+    if (filters?.genre && !entry.genres.includes(filters.genre)) return false
+    if (entry.year && (entry.year < yearFrom || entry.year > yearTo)) {
+      return false
+    }
+    return matchesLengthFilter(entry.runtime, filters?.length)
+  }).map((entry) => entry.id)
+
+  return ids.length ? ids : undefined
 }
 
 const handleCustomLinkParam = (
@@ -111,6 +151,11 @@ export const getVoroforceConfig = (state: StoreState) => {
   }
 
   const randomCellSelection = config.media?.randomCellSelection
+  const filteredMovieIds = getFilteredMovieIds(userConfig.movieFilters)
+  if (randomCellSelection && filteredMovieIds) {
+    randomCellSelection.poolIds = filteredMovieIds
+    randomCellSelection.poolSize = filteredMovieIds.length
+  }
   const defaultCellLimit = randomCellSelection?.enabled
     ? randomCellSelection.count
     : config.cells

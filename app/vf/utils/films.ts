@@ -3,6 +3,7 @@ import type { VoroforceCell } from '../types'
 export type FilmData = Record<string, string | number>
 export type FilmBatch = FilmData[]
 export type FilmBatches = Map<number, FilmBatch>
+export const FILM_BATCH_SIZE = 216
 export type DiscoveryTag =
   | 'crowd-pleaser'
   | 'hidden-gem'
@@ -19,6 +20,11 @@ export interface SimilarFilmMatch {
   reasons: string[]
 }
 
+export interface FilmLocation {
+  subgrid: number
+  subgridIndex: number
+}
+
 export class Film {
   tmdbId: number
   imdbId?: string
@@ -29,6 +35,7 @@ export class Film {
   year: number
   rating: number
   popularity: number
+  runtime?: number
   poster: string
   backdrop: string
 
@@ -47,6 +54,8 @@ export class Film {
     this.year = Number(data.release_year)
     this.rating = Number(data.vote_average) * 10
     this.popularity = Number(data.popularity)
+    const runtime = Number(data.runtime_minutes)
+    this.runtime = Number.isFinite(runtime) && runtime > 0 ? runtime : undefined
     this.poster = String(data.poster_path)
     this.backdrop = String(data.backdrop_path)
   }
@@ -85,6 +94,29 @@ export const getCellFilm = async (
   const filmData = filmBatch?.[metadataIndex % filmBatch.length]
 
   return filmData ? new Film(filmData) : undefined
+}
+
+export const findFilmLocation = (
+  film: Film,
+  filmBatches: FilmBatches,
+): FilmLocation | undefined => {
+  for (const [subgrid, filmBatch] of filmBatches) {
+    const subgridIndex = filmBatch.findIndex(
+      (filmData) => Number(filmData.id) === film.tmdbId,
+    )
+    if (subgridIndex !== -1) return { subgrid, subgridIndex }
+  }
+}
+
+export const assignFilmToCell = (
+  cell: VoroforceCell,
+  location: FilmLocation,
+) => {
+  const metadataCellId =
+    location.subgrid * FILM_BATCH_SIZE + location.subgridIndex
+  cell.id = metadataCellId % FILM_BATCH_SIZE
+  cell.subgrid = location.subgrid
+  cell.subgridIndex = location.subgridIndex
 }
 
 const getGenreOverlapScore = (
