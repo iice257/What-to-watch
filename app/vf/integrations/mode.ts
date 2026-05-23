@@ -13,13 +13,17 @@ const MODE_INIT_RETRY_LIMIT = 100
 const PRELOAD_REVEAL_FALLBACK_MS = 8000
 
 export const revealVoroforceContainer = () => {
-  store.getState().container?.classList.add('vf-scene-ready')
-  store.setState({
-    voroforceMediaPreloaded: true,
-  })
+  const state = store.getState()
+  const container = state.container ?? document.getElementById('voroforce')
+  container?.classList.add('vf-scene-ready')
+  state.setVoroforceMediaPreloaded(true)
+  if (!state.playedIntro) {
+    state.setPlayedIntro(true)
+  }
 }
 
-let afterModeChangeTimeout: NodeJS.Timeout
+let afterModeChangeTimeout: ReturnType<typeof setTimeout>
+let revealFallbackTimeout: number | undefined
 
 const waitForVoroforceTicks = (count: number, callback: () => void) => {
   const ticker = store.getState().voroforce?.ticker
@@ -136,6 +140,13 @@ const handleIntro = (attempt = 0) => {
 }
 
 export const handleMode = (attempt = 0) => {
+  if (attempt === 0 && !revealFallbackTimeout) {
+    revealFallbackTimeout = window.setTimeout(
+      revealVoroforceContainer,
+      PRELOAD_REVEAL_FALLBACK_MS,
+    )
+  }
+
   const { mode: initialMode, voroforce, config } = store.getState()
 
   if (!voroforce?.loader || !voroforce?.ticker) {
