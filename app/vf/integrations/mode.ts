@@ -8,6 +8,7 @@ import { updateControlsByMode } from './controls'
 
 const INTRO_LATTICE_SETTLE_MS = 250
 const INTRO_PREVIEW_WARMUP_TICKS = 2
+const PRELOAD_REVEAL_FALLBACK_MS = 8000
 
 export const revealVoroforceContainer = () => {
   store.getState().container?.classList.add('vf-scene-ready')
@@ -139,10 +140,21 @@ export const handleMode = () => {
     }
   } else {
     if (config.media.enabled && config.media.preload) {
-      loader.listenOnce('preloaded', () => {
+      let revealed = false
+      const revealAfterUpload = () => {
+        if (revealed) return
+        revealed = true
         // media will be uploaded to gpu on the next tick
         ticker.listenOnce('tick', revealVoroforceContainer)
-      })
+      }
+
+      loader.listenOnce('preloaded', revealAfterUpload)
+      loader.listenOnce('idle', revealAfterUpload)
+
+      if (loader.loadingMediaLayers === 0) {
+        window.setTimeout(revealAfterUpload, 100)
+      }
+      window.setTimeout(revealAfterUpload, PRELOAD_REVEAL_FALLBACK_MS)
     } else {
       revealVoroforceContainer()
     }
