@@ -95,9 +95,10 @@ export const FilmViewDrawer = () => {
 
   useEffect(() => {
     if (isSelectMode) {
-      let direction = getDefaultDirection(isLandscape)
+      let direction =
+        isSmallScreen && !isLandscape ? 'top' : getDefaultDirection(isLandscape)
       const voroforceCell = voroforceCellRef.current
-      if (voroforceCell) {
+      if (!(isSmallScreen && !isLandscape) && voroforceCell) {
         if (isLandscape) {
           if (voroforceCell.x < window.innerWidth / (isSmallScreen ? 2 : 3)) {
             direction = 'right'
@@ -129,7 +130,7 @@ export const FilmViewDrawer = () => {
           onMouseLeave: () => setFreezeFilm(false),
         }),
         className: cn(
-          'group landscape:max-h-[18rem] landscape:w-2/5 md:landscape:max-h-[24rem]',
+          'group max-md:not-landscape:inset-0 max-md:not-landscape:h-dvh max-md:not-landscape:p-0 landscape:max-h-[18rem] landscape:w-2/5 md:landscape:max-h-[24rem]',
           {
             'contain-layout contain-paint contain-style':
               !addCustomLinkTypeOpen,
@@ -138,7 +139,8 @@ export const FilmViewDrawer = () => {
         ),
       }}
       innerContentProps={{
-        className: 'relative z-40',
+        className:
+          'relative z-40 max-md:not-landscape:h-full max-md:not-landscape:rounded-none max-md:not-landscape:border-0 max-md:not-landscape:bg-background/40 max-md:not-landscape:backdrop-blur-sm',
       }}
       footer={
         mountContent ? (
@@ -152,7 +154,7 @@ export const FilmViewDrawer = () => {
       }
       handleProps={{
         className:
-          'max-md:bg-background max-md:-translate-y-[150%] max-md:h-1.5 lg:bg-transparent lg:backdrop-blur-lg',
+          'max-md:bg-background/80 max-md:h-1.5 max-md:translate-y-3 lg:bg-transparent lg:backdrop-blur-lg',
       }}
       additional={mountContent ? <AddCustomLinkModal /> : null}
     >

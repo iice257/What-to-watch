@@ -114,9 +114,10 @@ export const assignFilmToCell = (
 ) => {
   const metadataCellId =
     location.subgrid * FILM_BATCH_SIZE + location.subgridIndex
-  cell.id = metadataCellId % FILM_BATCH_SIZE
+  cell.id = metadataCellId
   cell.subgrid = location.subgrid
   cell.subgridIndex = location.subgridIndex
+  cell.targetMediaVersion = Math.max(cell.targetMediaVersion ?? 0, 2)
 }
 
 const getGenreOverlapScore = (

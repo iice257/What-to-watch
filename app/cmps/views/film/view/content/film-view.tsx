@@ -84,11 +84,19 @@ export const FilmView = ({
     const targetCell =
       farCells[Math.floor(Math.random() * farCells.length)] ?? cells[0]
     assignFilmToCell(targetCell, location)
-    const cellIdsTexture = voroforce.display?.scene?.cellIdsTexture
-    if (cellIdsTexture) cellIdsTexture.needsUpdate = true
-    controls.navigateToCell(targetCell)
-    controls.selectCell(targetCell)
+    const scene = voroforce.display?.scene
+    if (scene?.cellIdsTexture) scene.cellIdsTexture.needsUpdate = true
+    if (scene?.cellMediaVersionsTexture) {
+      scene.cellMediaVersionsTexture.needsUpdate = true
+    }
+
+    controls.deselect()
     setFilm(similarFilm)
+    controls.navigateToCell(targetCell)
+
+    window.setTimeout(() => {
+      controls.selectCell(targetCell)
+    }, 620)
   }
 
   if (!film) return
@@ -108,14 +116,22 @@ export const FilmView = ({
       <div className={cn('landscape:h-full', className)}>
         <div
           className={cn(
-            'absolute inset-0 h-full w-full transition-colors duration-700',
+            'absolute inset-0 h-full w-full overflow-hidden transition-colors duration-700',
             {
-              '!bg-background': viewHovered,
+              '!bg-background': viewHovered && !isSmallScreen,
+              'bg-background/45': isSmallScreen,
               'bg-background/70':
-                isSmallScreen || isIOS || backdropErrored || backdropHidden,
+                !isSmallScreen && (isIOS || backdropErrored || backdropHidden),
             },
           )}
         >
+          {isSmallScreen && film.poster && (
+            <img
+              className='absolute inset-0 h-full w-full scale-105 object-cover object-center opacity-35 blur-md saturate-125 transition-opacity duration-700'
+              alt=''
+              src={`${config.posterBaseUrl}${film.poster}`}
+            />
+          )}
           {!isIOS && (
             <img
               className={cn(
@@ -142,7 +158,7 @@ export const FilmView = ({
           <div
             className={cn(
               'w-full group-hover:h-auto group-hover:min-h-64 md:h-48 md:not-landscape:h-48 group-hover:md:not-landscape:min-h-48 lg:h-64 max-md:landscape:h-full group-hover:lg:landscape:min-h-64 group-hover:md:landscape:min-h-48',
-              {},
+              'max-md:not-landscape:min-h-[45dvh] max-md:not-landscape:pt-[18dvh]',
             )}
           >
             <div className='flex h-full w-full flex-row gap-6 p-4 md:p-6 lg:p-6 xl:p-9'>
