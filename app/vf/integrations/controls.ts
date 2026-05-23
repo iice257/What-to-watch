@@ -4,7 +4,10 @@ import { VOROFORCE_MODE } from '../consts'
 import type { VoroforceCell, VoroforceInstance } from '../types'
 import { getCellFilm } from '../utils'
 
-export const handleControls = () => {
+const CONTROLS_INIT_RETRY_MS = 100
+const CONTROLS_INIT_RETRY_LIMIT = 100
+
+export const handleControls = (attempt = 0) => {
   const {
     setFilm,
     voroforce,
@@ -16,7 +19,15 @@ export const handleControls = () => {
     mode,
   } = store.getState()
 
-  if (!voroforce?.controls) return
+  if (!voroforce?.controls) {
+    if (attempt < CONTROLS_INIT_RETRY_LIMIT) {
+      window.setTimeout(
+        () => handleControls(attempt + 1),
+        CONTROLS_INIT_RETRY_MS,
+      )
+    }
+    return
+  }
 
   const { controls, ticker } = voroforce
   let focusedFilmRequest = 0

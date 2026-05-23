@@ -109,13 +109,15 @@ export const FilmView = ({
         onMouseLeave: () => setViewHovered(false),
       })}
     >
-      <div className={cn('landscape:h-full', className)}>
+      <div
+        className={cn('max-md:not-landscape:h-dvh landscape:h-full', className)}
+      >
         <div
           className={cn(
-            'absolute inset-0 h-full w-full overflow-hidden transition-colors duration-700',
+            'absolute inset-0 h-full min-h-dvh w-full overflow-hidden transition-colors duration-700',
             {
               '!bg-background': viewHovered && !isSmallScreen,
-              'bg-black/35': isSmallScreen,
+              'bg-black/20': isSmallScreen,
               'bg-background/70':
                 !isSmallScreen && (isIOS || backdropErrored || backdropHidden),
             },
@@ -123,13 +125,13 @@ export const FilmView = ({
         >
           {isSmallScreen && film.poster && (
             <img
-              className='absolute inset-0 h-full w-full object-cover object-center opacity-80 saturate-125 transition-opacity duration-700'
+              className='absolute inset-0 h-full min-h-dvh w-full scale-110 object-cover object-center opacity-65 blur-xl saturate-125 transition-opacity duration-700'
               alt=''
               src={`${config.posterBaseUrl}${film.poster}`}
             />
           )}
           {isSmallScreen && film.poster && (
-            <div className='absolute inset-0 bg-gradient-to-b from-black/20 via-black/48 to-black/82' />
+            <div className='absolute inset-0 bg-gradient-to-b from-black/15 via-black/35 to-black/68' />
           )}
           {!isIOS && !isSmallScreen && (
             <img

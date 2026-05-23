@@ -156,6 +156,7 @@ export const FilmViewDrawer = () => {
         className:
           'max-md:bg-white/70 max-md:h-1.5 max-md:translate-y-3 lg:bg-transparent lg:backdrop-blur-lg',
       }}
+      handle={!isSmallScreen || isLandscape}
       additional={mountContent ? <AddCustomLinkModal /> : null}
     >
       <Suspense>{mountContent && <FilmView film={film} />}</Suspense>

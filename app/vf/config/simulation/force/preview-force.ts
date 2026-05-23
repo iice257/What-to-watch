@@ -11,11 +11,12 @@ export const previewForceSimulationStepConfig = {
     smoothPrimaryCell: true,
     requestMediaVersions: {
       enabled: true,
+      handleMediaSpeedLimits: false,
       primaryTargetVersion: 2,
-      v2ColLevelAdjacencyThreshold: 48,
-      v2RowLevelAdjacencyThreshold: 32,
-      v1ColLevelAdjacencyThreshold: 14,
-      v1RowLevelAdjacencyThreshold: 8,
+      v2ColLevelAdjacencyThreshold: 9999,
+      v2RowLevelAdjacencyThreshold: 9999,
+      v1ColLevelAdjacencyThreshold: 9999,
+      v1RowLevelAdjacencyThreshold: 9999,
     },
     breathing: {
       enabled: false,

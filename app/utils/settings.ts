@@ -161,7 +161,7 @@ const getDefaultSettings = (): PersistentSettings => ({
   theme: 'dark' as THEME,
   playedIntro: true,
   preset: DEFAULT_VOROFORCE_PRESET,
-  cellLimit: CELL_LIMIT.xxs,
+  cellLimit: CELL_LIMIT.xs,
   deviceClass: DEVICE_CLASS.low,
   userConfig: {},
 })
@@ -172,6 +172,8 @@ const normalizeSettings = (
   const normalized = {
     ...getDefaultSettings(),
     ...settings,
+    preset: DEFAULT_VOROFORCE_PRESET,
+    cellLimit: CELL_LIMIT.xs,
     userConfig: settings.userConfig ?? {},
   }
 

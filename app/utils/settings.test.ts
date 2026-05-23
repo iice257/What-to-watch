@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { THEME } from '../consts'
-import { VOROFORCE_PRESET } from '../vf/consts'
+import { CELL_LIMIT, DEVICE_CLASS, VOROFORCE_PRESET } from '../vf/consts'
 import {
   type PersistentSettings,
   getPersistentSettings,
@@ -22,7 +22,10 @@ describe('Settings Utils', () => {
       expect(settings).toEqual({
         version: 1,
         theme: THEME.dark,
-        playedIntro: false,
+        playedIntro: true,
+        preset: VOROFORCE_PRESET.minimal,
+        cellLimit: CELL_LIMIT.xs,
+        deviceClass: DEVICE_CLASS.low,
         userConfig: {},
       })
     })
@@ -39,7 +42,11 @@ describe('Settings Utils', () => {
       localStorage.setItem('settings', JSON.stringify(testSettings))
 
       const settings = getPersistentSettings()
-      expect(settings).toEqual(testSettings)
+      expect(settings).toEqual({
+        ...testSettings,
+        cellLimit: CELL_LIMIT.xs,
+        deviceClass: DEVICE_CLASS.low,
+      })
     })
 
     it('should migrate from legacy individual keys', () => {
@@ -55,8 +62,8 @@ describe('Settings Utils', () => {
         version: 1,
         theme: THEME.light,
         playedIntro: true,
-        preset: VOROFORCE_PRESET.chaos,
-        cellLimit: undefined,
+        preset: VOROFORCE_PRESET.minimal,
+        cellLimit: CELL_LIMIT.xs,
         deviceClass: undefined,
         userConfig: { legacy: true },
       })
@@ -125,7 +132,10 @@ describe('Settings Utils', () => {
       expect(reset).toEqual({
         version: 1,
         theme: THEME.dark,
-        playedIntro: false,
+        playedIntro: true,
+        preset: VOROFORCE_PRESET.minimal,
+        cellLimit: CELL_LIMIT.xs,
+        deviceClass: DEVICE_CLASS.low,
         userConfig: {},
       })
 

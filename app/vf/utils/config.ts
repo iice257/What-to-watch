@@ -77,6 +77,8 @@ const hasMovieFilters = (filters?: MovieFilters) =>
     filters?.genre || filters?.yearFrom || filters?.yearTo || filters?.length,
   )
 
+const MAX_RANDOM_GRID_CELLS = 10000
+
 const matchesLengthFilter = (runtime: number, length?: MovieLengthFilter) => {
   if (!length) return true
   if (!runtime) return false
@@ -151,6 +153,16 @@ export const getVoroforceConfig = (state: StoreState) => {
   }
 
   const randomCellSelection = config.media?.randomCellSelection
+  if (randomCellSelection) {
+    randomCellSelection.count = Math.min(
+      randomCellSelection.count,
+      MAX_RANDOM_GRID_CELLS,
+    )
+    randomCellSelection.poolSize = Math.min(
+      randomCellSelection.poolSize,
+      MAX_RANDOM_GRID_CELLS,
+    )
+  }
   const filteredMovieIds = getFilteredMovieIds(userConfig.movieFilters)
   if (randomCellSelection && filteredMovieIds) {
     randomCellSelection.poolIds = filteredMovieIds

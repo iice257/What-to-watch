@@ -38,36 +38,11 @@ export type PresetItems = Array<PresetItem | Array<PresetItem>>
 
 export const PRESET_ITEMS: PresetItems = [
   {
-    id: VOROFORCE_PRESET.mobile,
-    name: 'Mobile',
-  },
-  {
     id: VOROFORCE_PRESET.minimal,
     name: 'Minimal',
     // videoSrc: '/tmp.webm',
     recommendedDeviceClass: DEVICE_CLASS.low,
   },
-  {
-    id: VOROFORCE_PRESET.depth,
-    name: 'Depth',
-    // videoSrc: '/tmp.webm',
-    recommendedDeviceClass: DEVICE_CLASS.high,
-  },
-  [
-    {
-      id: VOROFORCE_PRESET.chaos,
-      name: 'Chaos',
-      recommendedDeviceClass: DEVICE_CLASS.mid,
-      wip: true,
-    },
-    {
-      id: VOROFORCE_PRESET.contours,
-      name: 'Contours',
-      recommendedDeviceClass: DEVICE_CLASS.mid,
-      wip: true,
-      disabled: true,
-    },
-  ],
 ]
 
 export enum CELL_LIMIT {
@@ -80,29 +55,9 @@ export enum CELL_LIMIT {
 
 export const CELL_LIMIT_ITEMS = [
   {
-    value: CELL_LIMIT.xxs,
-    label: '5,000',
-  },
-  {
     value: CELL_LIMIT.xs,
     label: '10,000',
     recommendedDeviceClass: DEVICE_CLASS.low,
-  },
-  {
-    value: CELL_LIMIT.sm,
-    label: '25,000',
-    recommendedDeviceClass: DEVICE_CLASS.low,
-  },
-  {
-    value: CELL_LIMIT.md,
-    label: '50,000',
-    recommendedDeviceClass: DEVICE_CLASS.mid,
-  },
-  {
-    value: CELL_LIMIT.lg,
-    label: '100,000',
-    recommendedDeviceClass: DEVICE_CLASS.high,
-    doNotRecommend: true,
   },
 ]
 
