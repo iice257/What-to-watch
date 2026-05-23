@@ -140,7 +140,7 @@ export const FilmViewDrawer = () => {
       }}
       innerContentProps={{
         className:
-          'relative z-40 max-md:not-landscape:h-full max-md:not-landscape:rounded-none max-md:not-landscape:border-0 max-md:not-landscape:bg-background/40 max-md:not-landscape:backdrop-blur-sm',
+          'relative z-40 max-md:not-landscape:h-full max-md:not-landscape:rounded-none max-md:not-landscape:border-0 max-md:not-landscape:bg-transparent',
       }}
       footer={
         mountContent ? (
@@ -154,7 +154,7 @@ export const FilmViewDrawer = () => {
       }
       handleProps={{
         className:
-          'max-md:bg-background/80 max-md:h-1.5 max-md:translate-y-3 lg:bg-transparent lg:backdrop-blur-lg',
+          'max-md:bg-white/70 max-md:h-1.5 max-md:translate-y-3 lg:bg-transparent lg:backdrop-blur-lg',
       }}
       additional={mountContent ? <AddCustomLinkModal /> : null}
     >

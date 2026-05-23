@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest'
 import {
   Film,
   type FilmData,
+  assignFilmToCell,
+  findFilmLocation,
   getDiscoveryTags,
   getSimilarFilms,
   getSimilarityReasons,
@@ -100,6 +102,29 @@ describe('film similarity', () => {
     ])
   })
 
+  it('maps a similar film to its full atlas id and high-res target version', () => {
+    const batches = new Map([
+      [
+        4,
+        [
+          filmData({ id: 10, title: 'Other' }),
+          filmData({ id: 11, title: 'Target' }),
+        ],
+      ],
+    ])
+    const target = new Film(filmData({ id: 11, title: 'Target' }))
+    const location = findFilmLocation(target, batches)
+    const cell = { id: 0, subgrid: 0, subgridIndex: 0, targetMediaVersion: 1 }
+
+    expect(location).toEqual({ subgrid: 4, subgridIndex: 1 })
+    if (!location) throw new Error('Expected target film location')
+    assignFilmToCell(cell as never, location)
+
+    expect(cell.id).toBe(865)
+    expect(cell.subgrid).toBe(4)
+    expect(cell.subgridIndex).toBe(1)
+    expect(cell.targetMediaVersion).toBe(2)
+  })
   it('classifies films with local discovery tags', () => {
     const film = new Film(
       filmData({

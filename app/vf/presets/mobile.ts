@@ -146,7 +146,7 @@ export default {
                 value: 0.8,
               },
               [VOROFORCE_MODE.select]: {
-                value: 1.15,
+                value: 2.4,
               },
             },
           },
