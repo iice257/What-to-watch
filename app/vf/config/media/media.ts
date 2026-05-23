@@ -13,7 +13,7 @@ const mediaConfig = {
   compressionFormat: 'dds', // or 'ktx'
   randomCellSelection: {
     enabled: true,
-    count: parsePositiveIntEnv(import.meta.env.VITE_RANDOM_MOVIE_COUNT, 5000),
+    count: parsePositiveIntEnv(import.meta.env.VITE_RANDOM_MOVIE_COUNT, 15000),
     poolSize: parsePositiveIntEnv(
       import.meta.env.VITE_RANDOM_MOVIE_POOL_SIZE,
       parsePositiveIntEnv(import.meta.env.VITE_FILM_INFO_LAYERS, 1) * 18 * 12,

@@ -112,7 +112,7 @@ export const getVoroforceConfig = (state: StoreState) => {
 
   const randomCellSelection = config.media?.randomCellSelection
   const defaultCellLimit = randomCellSelection?.enabled
-    ? Math.min(randomCellSelection.count, randomCellSelection.poolSize)
+    ? randomCellSelection.count
     : config.cells
 
   config.cells = cellsOverrideParam

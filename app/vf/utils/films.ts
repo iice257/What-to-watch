@@ -72,15 +72,19 @@ export const getCellFilm = async (
   filmBatches: FilmBatches,
 ) => {
   if (!cell) return
-  let filmBatch = filmBatches.get(cell.subgrid)
+  const metadataSubgrid = Number.isFinite(cell.subgrid) ? cell.subgrid : 0
+  const metadataIndex = Number.isFinite(cell.subgridIndex)
+    ? cell.subgridIndex
+    : cell.index
+  let filmBatch = filmBatches.get(metadataSubgrid)
   if (!filmBatch) {
-    filmBatch = await loadCellFilmBatch(cell.subgrid)
-    filmBatches.set(cell.subgrid, filmBatch ?? [])
+    filmBatch = await loadCellFilmBatch(metadataSubgrid)
+    filmBatches.set(metadataSubgrid, filmBatch ?? [])
   }
 
-  return filmBatch?.[cell.subgridIndex]
-    ? new Film(filmBatch[cell.subgridIndex])
-    : undefined
+  const filmData = filmBatch?.[metadataIndex % filmBatch.length]
+
+  return filmData ? new Film(filmData) : undefined
 }
 
 const getGenreOverlapScore = (
