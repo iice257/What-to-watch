@@ -4,6 +4,7 @@ import {
   type FilmData,
   assignFilmToCell,
   findFilmLocation,
+  getCellFilm,
   getDiscoveryTags,
   getSimilarFilms,
   getSimilarityReasons,
@@ -22,6 +23,7 @@ const filmData = (overrides: Partial<FilmData>): FilmData => ({
   popularity: 50,
   poster_path: '/poster.jpg',
   backdrop_path: '/backdrop.jpg',
+  production_countries: 'United States of America',
   ...overrides,
 })
 
@@ -82,6 +84,65 @@ describe('film similarity', () => {
 
     expect(first?.film.title).toBe('Closest')
     expect(first?.reasons).toContain('Shared Drama and Thriller DNA')
+  })
+
+  it('falls back to an English-likely record for default display metadata', async () => {
+    const batches = new Map([
+      [
+        0,
+        [
+          filmData({
+            id: 1,
+            title: '特殊身份',
+            production_countries: 'China',
+          }),
+          filmData({
+            id: 2,
+            title: 'The Replacement',
+            production_countries: 'United Kingdom',
+          }),
+        ],
+      ],
+    ])
+
+    const film = await getCellFilm(
+      { id: 0, index: 0, subgrid: 0, subgridIndex: 0 } as never,
+      batches,
+    )
+
+    expect(film?.title).toBe('The Replacement')
+  })
+
+  it('uses the root metadata batch when a wrapped batch has no English-likely records', async () => {
+    const batches = new Map([
+      [
+        0,
+        [
+          filmData({
+            id: 1,
+            title: 'Root English',
+            production_countries: 'Canada',
+          }),
+        ],
+      ],
+      [
+        1,
+        [
+          filmData({
+            id: 2,
+            title: 'Ночные стражи',
+            production_countries: 'Russia',
+          }),
+        ],
+      ],
+    ])
+
+    const film = await getCellFilm(
+      { id: 216, index: 216, subgrid: 1, subgridIndex: 0 } as never,
+      batches,
+    )
+
+    expect(film?.title).toBe('Root English')
   })
 
   it('returns concise reasons for similar films', () => {

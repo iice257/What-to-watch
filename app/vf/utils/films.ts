@@ -7,6 +7,45 @@ export const FILM_BATCH_SIZE = 216
 const FILM_BATCH_COUNT = 5
 const normalizeBatchIndex = (batchIndex: number) =>
   ((batchIndex % FILM_BATCH_COUNT) + FILM_BATCH_COUNT) % FILM_BATCH_COUNT
+const englishLanguageCountries = [
+  'Australia',
+  'Canada',
+  'Ireland',
+  'New Zealand',
+  'United Kingdom',
+  'United States',
+]
+const isAscii = (value: string) =>
+  [...value].every((character) => character.charCodeAt(0) <= 127)
+const isEnglishLikelyFilmData = (filmData: FilmData) => {
+  const title = String(filmData.title ?? '')
+  const countries = String(filmData.production_countries ?? '')
+  return (
+    title.length > 0 &&
+    isAscii(title) &&
+    englishLanguageCountries.some((country) => countries.includes(country))
+  )
+}
+const getDisplayFilmData = (filmBatch: FilmBatch, index: number) => {
+  if (!filmBatch.length) return
+  const filmData = filmBatch[index % filmBatch.length]
+  if (!filmData || isEnglishLikelyFilmData(filmData)) return filmData
+
+  for (let offset = 1; offset < filmBatch.length; offset++) {
+    const candidate = filmBatch[(index + offset) % filmBatch.length]
+    if (candidate && isEnglishLikelyFilmData(candidate)) return candidate
+  }
+
+  return filmData
+}
+const loadFallbackFilmBatch = async (filmBatches: FilmBatches) => {
+  let fallbackBatch = filmBatches.get(0)
+  if (!fallbackBatch) {
+    fallbackBatch = await loadCellFilmBatch(0)
+    filmBatches.set(0, fallbackBatch ?? [])
+  }
+  return fallbackBatch
+}
 export type DiscoveryTag =
   | 'crowd-pleaser'
   | 'hidden-gem'
@@ -97,9 +136,18 @@ export const getCellFilm = async (
     filmBatches.set(metadataSubgrid, filmBatch ?? [])
   }
 
-  const filmData = filmBatch?.[metadataIndex % filmBatch.length]
+  const filmData = filmBatch?.length
+    ? getDisplayFilmData(filmBatch, metadataIndex)
+    : undefined
+  const displayFilmData =
+    filmData && isEnglishLikelyFilmData(filmData)
+      ? filmData
+      : (getDisplayFilmData(
+          (await loadFallbackFilmBatch(filmBatches)) ?? [],
+          metadataIndex,
+        ) ?? filmData)
 
-  return filmData ? new Film(filmData) : undefined
+  return displayFilmData ? new Film(displayFilmData) : undefined
 }
 
 export const findFilmLocation = (
@@ -233,6 +281,7 @@ export const getSimilarFilms = (
 ): SimilarFilmMatch[] => {
   const candidates = [...filmBatches.values()]
     .flat()
+    .filter(isEnglishLikelyFilmData)
     .map((filmData) => new Film(filmData))
 
   return candidates
