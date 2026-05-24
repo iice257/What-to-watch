@@ -166,7 +166,7 @@ export const FilmView = ({
               <div className='flex w-full flex-col justify-between gap-9'>
                 <div className='flex w-full flex-col gap-3'>
                   <div className='relative flex w-full flex-row items-start justify-between gap-3 pr-16 md:pr-28'>
-                    <h3 className='font-black text-2xl leading-none md:text-3xl lg:text-4xl xl:text-5xl'>
+                    <h3 className='break-words font-black text-2xl leading-none md:text-3xl lg:text-4xl xl:text-5xl'>
                       {film.title}
                       {film.year && (
                         <span className='font-medium text-foreground/50'>
