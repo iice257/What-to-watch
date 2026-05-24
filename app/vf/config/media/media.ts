@@ -29,6 +29,10 @@ const mediaConfig = {
         import.meta.env.VITE_MEDIA_VERSION_0_LAYERS,
         1,
       ),
+      physicalLayers: parsePositiveIntEnv(
+        import.meta.env.VITE_MEDIA_VERSION_0_PHYSICAL_LAYERS,
+        1,
+      ),
       layerSrcFormat: '/low/{EXT}/{INDEX}.{EXT}',
       type: 'compressed-grid',
     },
@@ -41,6 +45,10 @@ const mediaConfig = {
         import.meta.env.VITE_MEDIA_VERSION_1_LAYERS,
         10,
       ),
+      physicalLayers: parsePositiveIntEnv(
+        import.meta.env.VITE_MEDIA_VERSION_1_PHYSICAL_LAYERS,
+        1,
+      ),
       layerSrcFormat: '/mid/{EXT}/{INDEX}.{EXT}',
       type: 'compressed-grid',
     },
@@ -52,6 +60,10 @@ const mediaConfig = {
       layers: parsePositiveIntEnv(
         import.meta.env.VITE_MEDIA_VERSION_2_LAYERS,
         241,
+      ),
+      physicalLayers: parsePositiveIntEnv(
+        import.meta.env.VITE_MEDIA_VERSION_2_PHYSICAL_LAYERS,
+        1,
       ),
       layerSrcFormat: '/high/{EXT}/{INDEX}.{EXT}',
       type: 'compressed-grid',

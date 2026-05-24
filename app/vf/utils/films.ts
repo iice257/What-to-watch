@@ -4,6 +4,9 @@ export type FilmData = Record<string, string | number>
 export type FilmBatch = FilmData[]
 export type FilmBatches = Map<number, FilmBatch>
 export const FILM_BATCH_SIZE = 216
+const FILM_BATCH_COUNT = 5
+const normalizeBatchIndex = (batchIndex: number) =>
+  ((batchIndex % FILM_BATCH_COUNT) + FILM_BATCH_COUNT) % FILM_BATCH_COUNT
 export type DiscoveryTag =
   | 'crowd-pleaser'
   | 'hidden-gem'
@@ -63,7 +66,8 @@ export class Film {
 
 const loadCellFilmBatch = async (batchIndex: number) => {
   const filmInfoBaseUrl = import.meta.env.VITE_FILM_INFO_BASE_URL ?? '/json'
-  const url = `${filmInfoBaseUrl}/${batchIndex}.json`
+  const normalizedBatchIndex = normalizeBatchIndex(batchIndex)
+  const url = `${filmInfoBaseUrl}/${normalizedBatchIndex}.json`
   try {
     const response = await fetch(url)
     if (!response.ok) {
@@ -71,7 +75,7 @@ const loadCellFilmBatch = async (batchIndex: number) => {
     }
     return await response.json()
   } catch (error) {
-    console.log('batchIndex', batchIndex)
+    console.log('batchIndex', batchIndex, 'normalized', normalizedBatchIndex)
     console.error('Error loading JSON:', error)
   }
 }
@@ -81,7 +85,9 @@ export const getCellFilm = async (
   filmBatches: FilmBatches,
 ) => {
   if (!cell) return
-  const metadataSubgrid = Number.isFinite(cell.subgrid) ? cell.subgrid : 0
+  const metadataSubgrid = normalizeBatchIndex(
+    Number.isFinite(cell.subgrid) ? cell.subgrid : 0,
+  )
   const metadataIndex = Number.isFinite(cell.subgridIndex)
     ? cell.subgridIndex
     : cell.index

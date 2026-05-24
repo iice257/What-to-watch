@@ -62,6 +62,10 @@ export class Loader extends CustomEventTarget {
 
     const baseUrl = this.config.baseUrl
     const config = this.config.versions[versionIndex]
+    const physicalLayerIndex =
+      Number.isFinite(config.physicalLayers) && config.physicalLayers > 0
+        ? layerIndex % config.physicalLayers
+        : layerIndex
     const ext =
       !config.type || config.type === 'compressed-grid'
         ? this.config.compressionFormat
@@ -72,7 +76,10 @@ export class Loader extends CustomEventTarget {
       src = await config.layerSrcFormat(layerIndex, this.store)
     } else {
       src = `${config.layerSrcFormat.startsWith('/') ? baseUrl : ''}${config.layerSrcFormat
-        .replaceAll('{INDEX}', `${(config.layerIndexStart ?? 0) + layerIndex}`)
+        .replaceAll(
+          '{INDEX}',
+          `${(config.layerIndexStart ?? 0) + physicalLayerIndex}`,
+        )
         .replaceAll('{EXT}', ext)}`
     }
 
@@ -96,6 +103,9 @@ export class Loader extends CustomEventTarget {
       const FOURCC_DXT1 = 0x31545844
 
       const response = await fetch(src)
+      if (!response.ok) {
+        throw new Error(`Failed to load DDS texture ${src}: ${response.status}`)
+      }
       const arrayBuffer = await response.arrayBuffer()
       const header = new Int32Array(arrayBuffer, 0, 31)
 
@@ -129,6 +139,9 @@ export class Loader extends CustomEventTarget {
       bytes = new Uint8Array(arrayBuffer, 128, size) // 128 is size of DDS header
     } else if (isKtx) {
       const response = await fetch(src)
+      if (!response.ok) {
+        throw new Error(`Failed to load KTX texture ${src}: ${response.status}`)
+      }
       const arrayBuffer = await response.arrayBuffer()
 
       const idCheck = [
