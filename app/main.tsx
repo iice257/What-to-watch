@@ -3,9 +3,10 @@ import { createRoot } from 'react-dom/client'
 import App from './app'
 import ErrorBoundary from './cmps/common/error-boundary'
 import config from './config'
-import { MovieField } from './movie-field'
 import { animateDocTitleSuffix } from './utils/anim'
 import { initTelemetry } from './utils/telemetry/init-telemetry'
+import { initVoroforce } from './vf'
+import { Voroforce } from './voroforce'
 import './styles.css'
 
 initTelemetry()
@@ -19,12 +20,12 @@ window.addEventListener('DOMContentLoaded', () => {
       <StrictMode>
         <ErrorBoundary>
           <App />
-          <MovieField />
+          <Voroforce />
         </ErrorBoundary>
       </StrictMode>,
     )
   } else {
-    // The lightweight movie field owns the visual surface now; disableUI is a no-op.
+    void initVoroforce({ force: true })
   }
   animateDocTitleSuffix()
 })

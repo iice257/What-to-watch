@@ -76,7 +76,6 @@ export const createEngineSlice: StateCreator<
     setMode: (mode: VOROFORCE_MODE) => set({ mode }),
     exitSelectMode: () => {
       get().voroforce?.controls?.deselectAndPin()
-      set({ mode: VOROFORCE_MODE.preview })
     },
     voroforceDevSceneEnabled: false,
     setVoroforceDevSceneEnabled: (voroforceDevSceneEnabled: boolean) => {

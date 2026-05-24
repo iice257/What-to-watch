@@ -8,6 +8,8 @@ import { cn } from '../../../../../utils/tw'
 import {
   type DiscoveryTag,
   type Film,
+  assignFilmToCell,
+  findFilmLocation,
   getDiscoveryTags,
   getSimilarFilms,
 } from '../../../../../vf'
@@ -36,9 +38,10 @@ export const FilmView = ({
 
   const filmRef = useRef<Film>(undefined)
   const ua = store((state) => state.ua)
-  const { filmBatches, setFilm } = useShallowState((state) => ({
+  const { filmBatches, setFilm, voroforce } = useShallowState((state) => ({
     filmBatches: state.filmBatches,
     setFilm: state.setFilm,
+    voroforce: state.voroforce,
   }))
 
   const [backdropHidden, setBackdropHidden] = useState(true)
@@ -62,12 +65,34 @@ export const FilmView = ({
   )
 
   const navigateToSimilarFilm = (similarFilm: Film) => {
+    const location = findFilmLocation(similarFilm, filmBatches)
+    const cells = voroforce?.cells
+    const controls = voroforce?.controls
+    if (!location || !cells?.length || !controls) return
+
+    const origin = controls.cells?.selected ?? controls.cells?.focused
+    const farCells = origin
+      ? [...cells]
+          .sort((a, b) => {
+            const aDistance = (a.x - origin.x) ** 2 + (a.y - origin.y) ** 2
+            const bDistance = (b.x - origin.x) ** 2 + (b.y - origin.y) ** 2
+            return bDistance - aDistance
+          })
+          .slice(0, Math.max(1, Math.floor(cells.length * 0.25)))
+      : [...cells]
+
+    const targetCell =
+      farCells[Math.floor(Math.random() * farCells.length)] ?? cells[0]
+    assignFilmToCell(targetCell, location)
+    const scene = voroforce.display?.scene
+    if (scene?.cellIdsTexture) scene.cellIdsTexture.needsUpdate = true
+    if (scene?.cellMediaVersionsTexture) {
+      scene.cellMediaVersionsTexture.needsUpdate = true
+    }
+
+    controls.deselect()
     setFilm(similarFilm)
-    window.dispatchEvent(
-      new CustomEvent('movie-field:navigate', {
-        detail: { id: similarFilm.tmdbId, film: similarFilm },
-      }),
-    )
+    controls.navigateToCell(targetCell)
   }
 
   if (!film) return

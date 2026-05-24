@@ -25,7 +25,6 @@ export type MovieLengthFilter = 'short' | 'feature' | 'long'
 
 export type MovieFilters = {
   genre?: string
-  region?: string
   yearFrom?: number
   yearTo?: number
   length?: MovieLengthFilter
@@ -75,11 +74,7 @@ export type UserConfig = {
 
 const hasMovieFilters = (filters?: MovieFilters) =>
   Boolean(
-    filters?.genre ||
-      filters?.region ||
-      filters?.yearFrom ||
-      filters?.yearTo ||
-      filters?.length,
+    filters?.genre || filters?.yearFrom || filters?.yearTo || filters?.length,
   )
 
 const MAX_RANDOM_GRID_CELLS = 10000

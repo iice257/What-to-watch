@@ -23,22 +23,6 @@ import {
 import { Switch } from '../../ui/switch'
 
 const ALL_FILTER_VALUE = 'all'
-const MOVIE_FILTER_REGIONS = [
-  'United States of America',
-  'United Kingdom',
-  'Canada',
-  'France',
-  'Japan',
-  'South Korea',
-  'India',
-  'Germany',
-  'Italy',
-  'Spain',
-  'China',
-  'Hong Kong',
-  'Brazil',
-  'Australia',
-]
 
 export const Settings = () => {
   const {
@@ -70,7 +54,6 @@ export const Settings = () => {
   const [fullscreen, setFullscreen] = useState(false)
   const [movieFilters, setMovieFilters] = useState({
     genre: userConfig.movieFilters?.genre ?? ALL_FILTER_VALUE,
-    region: userConfig.movieFilters?.region ?? ALL_FILTER_VALUE,
     yearFrom: userConfig.movieFilters?.yearFrom?.toString() ?? '',
     yearTo: userConfig.movieFilters?.yearTo?.toString() ?? '',
     length: userConfig.movieFilters?.length ?? ALL_FILTER_VALUE,
@@ -84,9 +67,6 @@ export const Settings = () => {
       movieFilters: {
         ...(movieFilters.genre !== ALL_FILTER_VALUE && {
           genre: movieFilters.genre,
-        }),
-        ...(movieFilters.region !== ALL_FILTER_VALUE && {
-          region: movieFilters.region,
         }),
         ...(Number.isFinite(yearFrom) && { yearFrom }),
         ...(Number.isFinite(yearTo) && { yearTo }),
@@ -137,7 +117,7 @@ export const Settings = () => {
         <div className='flex w-full flex-col gap-4 p-4 pb-18 md:gap-6 md:p-6 md:pr-10 md:pb-24 lg:pt-12 lg:pb-24'>
           <SmallScreenWarning />
           <CoreSettingsWidget onSubmit={() => window.location.reload()} />
-          <div className='grid gap-3 rounded-md border border-border/70 p-3 md:grid-cols-[1.1fr_1.1fr_0.7fr_0.7fr_0.9fr_auto] md:items-end'>
+          <div className='grid gap-3 rounded-md border border-border/70 p-3 md:grid-cols-[1.2fr_0.8fr_0.8fr_1fr_auto] md:items-end'>
             <div className='space-y-1.5'>
               <Label>Genre</Label>
               <Select
@@ -154,27 +134,6 @@ export const Settings = () => {
                   {MOVIE_FILTER_GENRES.map((genre) => (
                     <SelectItem key={genre} value={genre}>
                       {genre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className='space-y-1.5'>
-              <Label>Region</Label>
-              <Select
-                value={movieFilters.region}
-                onValueChange={(region) =>
-                  setMovieFilters((filters) => ({ ...filters, region }))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value={ALL_FILTER_VALUE}>Any region</SelectItem>
-                  {MOVIE_FILTER_REGIONS.map((region) => (
-                    <SelectItem key={region} value={region}>
-                      {region}
                     </SelectItem>
                   ))}
                 </SelectContent>
