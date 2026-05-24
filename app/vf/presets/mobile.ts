@@ -161,6 +161,9 @@ export default {
               },
             },
           },
+          fOuterMotionBlurMod: {
+            value: 0.16,
+          },
         },
       },
       post: {

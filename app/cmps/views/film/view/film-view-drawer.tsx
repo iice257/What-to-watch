@@ -49,6 +49,7 @@ export const FilmViewDrawer = () => {
     film: activeFilm,
     isSelectMode,
     voroforce,
+    configUniforms,
     exitVoroforceSelectMode,
     addCustomLinkTypeOpen,
     setAddCustomLinkTypeOpen,
@@ -56,6 +57,7 @@ export const FilmViewDrawer = () => {
     film: state.film,
     isSelectMode: selectIsSelectMode(state),
     voroforce: state.voroforce,
+    configUniforms: state.configUniforms,
     exitVoroforceSelectMode: state.exitSelectMode,
     addCustomLinkTypeOpen: state.addCustomLinkTypeOpen,
     setAddCustomLinkTypeOpen: state.setAddCustomLinkTypeOpen,
@@ -88,10 +90,19 @@ export const FilmViewDrawer = () => {
     setAddCustomLinkTypeOpen(false)
   }, [setAddCustomLinkTypeOpen])
 
+  const resetUnweightedEffect = useCallback(() => {
+    const uniform = configUniforms.main.get('fUnweightedEffectMod')
+    if (!uniform) return
+    uniform.value = 0
+    uniform.targetValue = 0
+    configUniforms.transitioning.delete('fUnweightedEffectMod')
+  }, [configUniforms])
+
   const handleClose = useCallback(() => {
+    resetUnweightedEffect()
     exitVoroforceSelectMode()
     onClose()
-  }, [exitVoroforceSelectMode, onClose])
+  }, [exitVoroforceSelectMode, onClose, resetUnweightedEffect])
 
   useEffect(() => {
     if (isSelectMode) {

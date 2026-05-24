@@ -141,6 +141,7 @@ uniform bool bDrawEdges;
 uniform bool bVoroEdgeBufferOutput;
 uniform float fPixelSearchRadiusMod;
 uniform float fUnweightedEffectMod;
+uniform float fOuterMotionBlurMod;
 uniform float fBaseXDistScale;
 uniform float fWeightedXDistScale;
 uniform bool bMediaDistortion;
@@ -816,6 +817,13 @@ void mediaColor(inout vec3 c, inout float a, in Plot plot) {
 
     vec2 tileSize = vec2(tileWidth, tileHeight);
     vec2 mediaTexcoord = tileOffset + mediaUv * tileSize;
+    vec2 blurVec = mediaUv - vec2(0.5);
+    float blurLen = length(blurVec);
+    vec2 blurDir = blurLen > 0.001 ? blurVec / blurLen : vec2(1., 0.);
+    vec2 blurOffset = blurDir * tileSize * 0.16;
+    vec2 tileMin = tileOffset + tileSize * 0.015;
+    vec2 tileMax = tileOffset + tileSize * 0.985;
+    float outerBlur = fOuterMotionBlurMod * smoothstep(0.72, 1., plot.mediaBulgeFactor);
 
     if (iMediaVersion == 0) {
         #if MEDIA_BICUBIC_FILTER == 1
@@ -825,6 +833,13 @@ void mediaColor(inout vec3 c, inout float a, in Plot plot) {
         #else
             c = texture(uMediaV0Texture, vec3(mediaTexcoord, float(layer))).rgb;
         #endif
+        if (outerBlur > 0.) {
+            vec3 blurC = (
+                texture(uMediaV0Texture, vec3(clamp(mediaTexcoord + blurOffset, tileMin, tileMax), float(layer))).rgb +
+                texture(uMediaV0Texture, vec3(clamp(mediaTexcoord - blurOffset, tileMin, tileMax), float(layer))).rgb
+            ) * 0.5;
+            c = mix(c, blurC, outerBlur);
+        }
     } else if (iMediaVersion == 1) {
         #if MEDIA_BICUBIC_FILTER == 1
             vec2 texSize = vec2(textureSize(uMediaV1Texture, 0).xy);
@@ -833,6 +848,13 @@ void mediaColor(inout vec3 c, inout float a, in Plot plot) {
         #else
             c = texture(uMediaV1Texture, vec3(mediaTexcoord, float(layer))).rgb;
         #endif
+        if (outerBlur > 0.) {
+            vec3 blurC = (
+                texture(uMediaV1Texture, vec3(clamp(mediaTexcoord + blurOffset, tileMin, tileMax), float(layer))).rgb +
+                texture(uMediaV1Texture, vec3(clamp(mediaTexcoord - blurOffset, tileMin, tileMax), float(layer))).rgb
+            ) * 0.5;
+            c = mix(c, blurC, outerBlur);
+        }
     } else if (iMediaVersion == 2) {
         #if MEDIA_BICUBIC_FILTER == 1
             vec2 texSize = vec2(textureSize(uMediaV2Texture, 0).xy);
@@ -841,6 +863,13 @@ void mediaColor(inout vec3 c, inout float a, in Plot plot) {
         #else
             c = texture(uMediaV2Texture, vec3(mediaTexcoord, float(layer))).rgb;
         #endif
+        if (outerBlur > 0.) {
+            vec3 blurC = (
+                texture(uMediaV2Texture, vec3(clamp(mediaTexcoord + blurOffset, tileMin, tileMax), float(layer))).rgb +
+                texture(uMediaV2Texture, vec3(clamp(mediaTexcoord - blurOffset, tileMin, tileMax), float(layer))).rgb
+            ) * 0.5;
+            c = mix(c, blurC, outerBlur);
+        }
     } else if (iMediaVersion == 3) {
         #if MEDIA_BICUBIC_FILTER == 1
             vec2 texSize = vec2(textureSize(uMediaV2Texture, 0).xy);
@@ -849,6 +878,13 @@ void mediaColor(inout vec3 c, inout float a, in Plot plot) {
         #else
             c = texture(uMediaV3Texture, vec3(mediaTexcoord, float(layer))).rgb;
         #endif
+        if (outerBlur > 0.) {
+            vec3 blurC = (
+                texture(uMediaV3Texture, vec3(clamp(mediaTexcoord + blurOffset, tileMin, tileMax), float(layer))).rgb +
+                texture(uMediaV3Texture, vec3(clamp(mediaTexcoord - blurOffset, tileMin, tileMax), float(layer))).rgb
+            ) * 0.5;
+            c = mix(c, blurC, outerBlur);
+        }
     }
 
 }

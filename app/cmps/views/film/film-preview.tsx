@@ -275,14 +275,14 @@ export const FilmPreview = ({ poster = false }) => {
     if (isSmallScreen && isSelectMode) return null
 
     return film ? (
-      <div className='pointer-events-none fixed top-5 left-5 z-20 max-w-[calc(100vw-2.5rem)] text-white md:top-9 md:left-9 md:max-w-[34rem]'>
-        <div className='flex max-w-full items-start gap-3 md:gap-4'>
+      <div className='pointer-events-none fixed top-7 left-6 z-20 max-w-[calc(100vw-3rem)] text-white md:top-9 md:left-9 md:max-w-[34rem]'>
+        <div className='flex max-w-full items-start gap-4 md:gap-4'>
           <FilmPoster
             film={film}
-            className='h-24 w-16 shrink-0 rounded-sm object-cover shadow-black/40 shadow-lg md:h-32 md:w-[5.35rem]'
+            className='h-[7.5rem] w-20 shrink-0 rounded-sm object-cover shadow-black/40 shadow-lg md:h-32 md:w-[5.35rem]'
           />
           <div className='min-w-0 flex-1'>
-            <div className='line-clamp-2 break-words font-black text-lg leading-none drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] md:text-2xl'>
+            <div className='line-clamp-2 break-words font-black text-2xl leading-none drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] md:text-2xl'>
               {film.title}
               {film.year ? (
                 <span className='font-medium text-white/55'>
@@ -291,7 +291,7 @@ export const FilmPreview = ({ poster = false }) => {
               ) : null}
             </div>
             {film.tagline ? (
-              <div className='mt-1 line-clamp-2 text-sm text-white/75 italic leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] md:line-clamp-1'>
+              <div className='mt-1 line-clamp-2 text-lg text-white/75 italic leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] md:line-clamp-1 md:text-sm'>
                 {film.tagline}
               </div>
             ) : null}
@@ -299,7 +299,7 @@ export const FilmPreview = ({ poster = false }) => {
               {film.genres?.slice(0, 3).map((genre) => (
                 <Badge
                   key={genre}
-                  className='max-w-full truncate text-[0.6rem] leading-none'
+                  className='max-w-full truncate px-4 py-2 text-sm leading-none md:px-2.5 md:py-0.5 md:text-[0.6rem]'
                 >
                   {genre}
                 </Badge>
@@ -318,8 +318,8 @@ export const FilmPreview = ({ poster = false }) => {
     <>
       {film && !uiVisible && (
         <div className='pointer-events-none fixed inset-x-4 bottom-16 z-20 flex justify-center md:top-9 md:bottom-auto md:justify-start'>
-          <div className='max-w-full rounded-md border border-white/10 bg-black/62 px-3 py-2 text-white shadow-2xl shadow-black/40 backdrop-blur-md'>
-            <div className='line-clamp-2 break-words font-black text-lg leading-none md:max-w-[32rem] md:text-2xl'>
+          <div className='max-w-full rounded-md border border-white/10 bg-black/62 px-4 py-3 text-white shadow-2xl shadow-black/40 backdrop-blur-md md:px-3 md:py-2'>
+            <div className='line-clamp-2 break-words font-black text-2xl leading-none md:max-w-[32rem] md:text-2xl'>
               {film.title}
               {film.year ? (
                 <span className='font-medium text-white/55'>
@@ -328,7 +328,7 @@ export const FilmPreview = ({ poster = false }) => {
               ) : null}
             </div>
             {film.tagline ? (
-              <div className='mt-1 line-clamp-1 text-sm text-white/70 italic leading-tight'>
+              <div className='mt-1 line-clamp-2 text-lg text-white/70 italic leading-tight md:line-clamp-1 md:text-sm'>
                 {film.tagline}
               </div>
             ) : null}

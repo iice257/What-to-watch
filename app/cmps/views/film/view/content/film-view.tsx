@@ -37,6 +37,7 @@ export const FilmView = ({
   const [viewHovered, setViewHovered] = useState(false)
 
   const filmRef = useRef<Film>(undefined)
+  const previousFilmRef = useRef<Film>(undefined)
   const ua = store((state) => state.ua)
   const { filmBatches, setFilm, voroforce } = useShallowState((state) => ({
     filmBatches: state.filmBatches,
@@ -55,14 +56,33 @@ export const FilmView = ({
   }, [film])
 
   const isIOS = useMemo(() => ua.getOS()?.name === 'iOS', [ua])
-  const similarFilms = useMemo(
-    () => (film ? getSimilarFilms(film, filmBatches, 4) : []),
-    [film, filmBatches],
-  )
+  const similarFilms = useMemo(() => {
+    if (!film) return []
+    const matches = getSimilarFilms(film, filmBatches, 4)
+    const previousFilm = previousFilmRef.current
+    if (
+      previousFilm &&
+      previousFilm.tmdbId !== film.tmdbId &&
+      !matches.some(({ film }) => film.tmdbId === previousFilm.tmdbId)
+    ) {
+      return [
+        {
+          film: previousFilm,
+          score: 1,
+          reasons: ['Previous pick'],
+        },
+        ...matches.slice(0, 3),
+      ]
+    }
+    return matches
+  }, [film, filmBatches])
   const discoveryTags = useMemo(
     () => (film ? getDiscoveryTags(film).slice(0, 3) : []),
     [film],
   )
+  const visibleSimilarFilms = isSmallScreen
+    ? similarFilms.slice(0, 3)
+    : similarFilms
 
   const navigateToSimilarFilm = (similarFilm: Film) => {
     const location = findFilmLocation(similarFilm, filmBatches)
@@ -70,19 +90,10 @@ export const FilmView = ({
     const controls = voroforce?.controls
     if (!location || !cells?.length || !controls) return
 
-    const origin = controls.cells?.selected ?? controls.cells?.focused
-    const farCells = origin
-      ? [...cells]
-          .sort((a, b) => {
-            const aDistance = (a.x - origin.x) ** 2 + (a.y - origin.y) ** 2
-            const bDistance = (b.x - origin.x) ** 2 + (b.y - origin.y) ** 2
-            return bDistance - aDistance
-          })
-          .slice(0, Math.max(1, Math.floor(cells.length * 0.25)))
-      : [...cells]
+    const targetCell = controls.cells?.selected ?? controls.cells?.focused
+    if (!targetCell) return
 
-    const targetCell =
-      farCells[Math.floor(Math.random() * farCells.length)] ?? cells[0]
+    previousFilmRef.current = film
     assignFilmToCell(targetCell, location)
     const scene = voroforce.display?.scene
     if (scene?.cellIdsTexture) scene.cellIdsTexture.needsUpdate = true
@@ -90,7 +101,6 @@ export const FilmView = ({
       scene.cellMediaVersionsTexture.needsUpdate = true
     }
 
-    controls.deselect()
     setFilm(similarFilm)
     controls.navigateToCell(targetCell)
   }
@@ -125,7 +135,7 @@ export const FilmView = ({
         >
           {isSmallScreen && film.poster && (
             <img
-              className='absolute inset-0 h-full min-h-dvh w-full scale-110 object-cover object-center opacity-65 blur-xl saturate-125 transition-opacity duration-700'
+              className='absolute inset-0 h-full min-h-dvh w-full scale-110 object-cover object-center opacity-60 blur-xl saturate-125 transition-opacity duration-700'
               alt=''
               src={`${config.posterBaseUrl}${film.poster}`}
             />
@@ -159,14 +169,14 @@ export const FilmView = ({
           <div
             className={cn(
               'w-full group-hover:h-auto group-hover:min-h-64 md:h-48 md:not-landscape:h-48 group-hover:md:not-landscape:min-h-48 lg:h-64 max-md:landscape:h-full group-hover:lg:landscape:min-h-64 group-hover:md:landscape:min-h-48',
-              'max-md:not-landscape:min-h-[45dvh] max-md:not-landscape:pt-[18dvh]',
+              'max-md:not-landscape:min-h-[45dvh] max-md:not-landscape:pt-[12dvh]',
             )}
           >
             <div className='flex h-full w-full flex-row gap-6 p-4 md:p-6 lg:p-6 xl:p-9'>
               <div className='flex w-full flex-col justify-between gap-9'>
                 <div className='flex w-full flex-col gap-3'>
                   <div className='relative flex w-full flex-row items-start justify-between gap-3 pr-16 md:pr-28'>
-                    <h3 className='break-words font-black text-2xl leading-none md:text-3xl lg:text-4xl xl:text-5xl'>
+                    <h3 className='break-words font-black text-3xl leading-none md:text-3xl lg:text-4xl xl:text-5xl'>
                       {film.title}
                       {film.year && (
                         <span className='font-medium text-foreground/50'>
@@ -183,13 +193,13 @@ export const FilmView = ({
                     </div>
                   </div>
                   <div className='flex flex-col gap-3'>
-                    <p className='line-clamp-2 text-base text-foreground/80 italic leading-none md:line-clamp-1 lg:text-xl'>
+                    <p className='line-clamp-2 text-foreground/80 text-lg italic leading-none md:line-clamp-1 lg:text-xl'>
                       {film.tagline}
                     </p>
-                    <div className='flex flex-row gap-3 pt-2'>
+                    <div className='flex flex-row flex-wrap gap-3 pt-2'>
                       {film.genres?.map((genre) => (
                         <Badge
-                          className='whitespace-nowrap text-[0.6rem] leading-none md:text-xs'
+                          className='whitespace-nowrap px-4 py-2 text-sm leading-none md:px-2.5 md:py-0.5 md:text-xs'
                           key={genre}
                         >
                           {genre}
@@ -202,7 +212,7 @@ export const FilmView = ({
                           <Badge
                             key={tag}
                             variant='outline'
-                            className='border-foreground/25 bg-background/30 text-[0.6rem] text-foreground/75 leading-none backdrop-blur-sm md:text-xs'
+                            className='border-foreground/25 bg-background/30 px-4 py-2 text-foreground/75 text-sm leading-none backdrop-blur-sm md:px-2.5 md:py-0.5 md:text-xs'
                           >
                             {discoveryTagLabels[tag]}
                           </Badge>
@@ -214,8 +224,8 @@ export const FilmView = ({
               </div>
             </div>
           </div>
-          <div className='full mb-15 px-4 pb-6 md:px-6 lg:px-6 lg:pb-6 xl:px-9 xl:pb-9'>
-            <div className='flex flex-col justify-end text-base leading-tight max-md:text-sm max-lg:h-[calc(4em*1.25)] group-hover:md:h-auto group-hover:md:min-h-[calc(4em*1.25)] lg:h-[calc(4em*1.25)] lg:text-xl group-hover:lg:h-auto'>
+          <div className='full mb-15 px-4 pb-36 md:px-6 md:pb-6 lg:px-6 lg:pb-6 xl:px-9 xl:pb-9'>
+            <div className='flex flex-col justify-end text-base leading-tight max-md:text-base max-lg:h-[calc(4em*1.25)] group-hover:md:h-auto group-hover:md:min-h-[calc(4em*1.25)] lg:h-[calc(4em*1.25)] lg:text-xl group-hover:lg:h-auto'>
               <p className='max-lg:line-clamp-4 group-hover:max-lg:line-clamp-none group-hover:md:max-lg:line-clamp-4 lg:line-clamp-4 group-hover:lg:line-clamp-none'>
                 {film.overview}
               </p>
@@ -226,11 +236,11 @@ export const FilmView = ({
                   Movies like this
                 </h4>
                 <div className='flex flex-wrap gap-2'>
-                  {similarFilms.map(({ film: similarFilm, reasons }) => (
+                  {visibleSimilarFilms.map(({ film: similarFilm, reasons }) => (
                     <button
                       type='button'
                       key={similarFilm.tmdbId}
-                      className='max-w-full cursor-pointer rounded-md border border-foreground/20 bg-background/20 px-2 py-1.5 text-left text-foreground/80 leading-tight backdrop-blur-sm transition-colors hover:bg-background/45 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring'
+                      className='max-w-full cursor-pointer rounded-md border border-foreground/20 bg-background/20 px-3 py-2.5 text-left text-base text-foreground/80 leading-tight backdrop-blur-sm transition-colors hover:bg-background/45 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:px-2 md:py-1.5 md:text-sm'
                       onClick={() => navigateToSimilarFilm(similarFilm)}
                     >
                       <div className='truncate font-medium'>

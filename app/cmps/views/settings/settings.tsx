@@ -1,7 +1,7 @@
 import { useShallowState } from '@/store'
 import { useState } from 'react'
 import { THEME } from '../../../consts'
-import { reload } from '../../../utils/misc'
+import { reloadWithoutIntro } from '../../../utils/misc'
 import { VOROFORCE_PRESET } from '../../../vf'
 import { MOVIE_FILTER_GENRES } from '../../../vf/data/movie-filter-index'
 import type { MovieLengthFilter } from '../../../vf/utils'
@@ -32,8 +32,6 @@ export const Settings = () => {
     userConfig,
     setUserConfig,
     setPlayedIntro,
-    voroforceDevSceneEnabled,
-    setVoroforceDevSceneEnabled,
     canChangeTheme,
   } = useShallowState((state) => ({
     open: state.settingsOpen,
@@ -42,8 +40,6 @@ export const Settings = () => {
     userConfig: state.userConfig,
     setUserConfig: state.setUserConfig,
     setPlayedIntro: state.setPlayedIntro,
-    voroforceDevSceneEnabled: state.voroforceDevSceneEnabled,
-    setVoroforceDevSceneEnabled: state.setVoroforceDevSceneEnabled,
     canChangeTheme:
       state.preset === VOROFORCE_PRESET.minimal ||
       state.preset === VOROFORCE_PRESET.mobile,
@@ -76,14 +72,16 @@ export const Settings = () => {
       },
     }
     setUserConfig(nextUserConfig)
-    reload()
+    setPlayedIntro(true)
+    reloadWithoutIntro()
   }
 
   const clearMovieFilters = () => {
     const nextUserConfig = { ...userConfig }
     nextUserConfig.movieFilters = undefined
     setUserConfig(nextUserConfig)
-    reload()
+    setPlayedIntro(true)
+    reloadWithoutIntro()
   }
 
   return (
@@ -101,11 +99,11 @@ export const Settings = () => {
           <Button
             variant='outline'
             onClick={() => {
-              setPlayedIntro(false)
-              reload()
+              setPlayedIntro(true)
+              reloadWithoutIntro()
             }}
           >
-            Replay Intro
+            Reshuffle Grid
           </Button>
         </div>
       }
@@ -200,6 +198,9 @@ export const Settings = () => {
                 Apply
               </Button>
             </div>
+            <p className='text-muted-foreground text-xs md:col-span-5'>
+              Applying filters reshuffles the grid.
+            </p>
           </div>
           <div className='flex flex-row flex-wrap gap-6'>
             {canChangeTheme && (
@@ -229,16 +230,6 @@ export const Settings = () => {
                 }}
               />
               <Label htmlFor='dev-tools'>Dev tools</Label>
-            </div>
-            <div className='flex flex-row items-center gap-2'>
-              <Switch
-                id='show-cell-seeds'
-                checked={voroforceDevSceneEnabled}
-                onCheckedChange={(checked) => {
-                  setVoroforceDevSceneEnabled(checked)
-                }}
-              />
-              <Label htmlFor='show-cell-seeds'>Cell seeds</Label>
             </div>
             <div className='flex flex-row items-center gap-2 max-md:hidden'>
               <Switch

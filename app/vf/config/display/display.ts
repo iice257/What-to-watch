@@ -163,6 +163,9 @@ export default {
             },
           },
         },
+        fOuterMotionBlurMod: {
+          value: 0,
+        },
         fBaseXDistScale: {
           transition: true,
           modes: {
