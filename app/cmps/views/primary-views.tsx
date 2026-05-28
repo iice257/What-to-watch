@@ -3,7 +3,7 @@ import { About } from './about'
 import { Favorites } from './favorites'
 import { FilmPreview, FilmViewDrawer } from './film'
 import { HotkeysView } from './hotkeys'
-import { LowFpsAlert } from './low-fps-alert'
+import { PerformanceHud } from './performance-hud'
 import { Settings } from './settings'
 
 const PrimaryViews = () => {
@@ -13,12 +13,12 @@ const PrimaryViews = () => {
     <>
       <FilmPreview />
       <FilmViewDrawer />
+      <PerformanceHud />
       {uiVisible && (
         <>
           <Settings />
           <About />
           <Favorites />
-          <LowFpsAlert />
           <HotkeysView />
         </>
       )}

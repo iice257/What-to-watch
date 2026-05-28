@@ -3,6 +3,32 @@ type PerformanceMonitorSubscriptionApi = {
   onDecline: (api: PerformanceMonitorApi) => void
   onChange: (api: PerformanceMonitorApi) => void
   onFallback: (api: PerformanceMonitorApi) => void
+  onFrame: (api: PerformanceMonitorApi) => void
+}
+
+export type PerformanceMetrics = {
+  /** Last frame's instantaneous FPS */
+  currentFps: number
+  /** Average FPS across the last 1s */
+  avg1s: number
+  /** Average FPS across the last 5s */
+  avg5s: number
+  /** 1% low FPS proxy across the last 5s, based on p99 frame time */
+  low1Percent: number
+  /** Last frame duration */
+  frameMs: number
+  /** Worst frame duration across the last 5s */
+  worstFrameMs: number
+  /** Number of frame samples in the 5s window */
+  sampleCount: number
+  /** Last update timestamp from performance.now() */
+  lastUpdated: number
+  visible: boolean
+}
+
+type FrameSample = {
+  time: number
+  delta: number
 }
 
 export type PerformanceMonitorApi = {
@@ -21,10 +47,18 @@ export type PerformanceMonitorApi = {
   index: number
   flipped: number
   fallback: boolean
+  metrics: PerformanceMetrics
   subscriptions: Map<symbol, Partial<PerformanceMonitorSubscriptionApi>>
   subscribe: (sub: Partial<PerformanceMonitorSubscriptionApi>) => () => void
+  getSnapshot: () => PerformanceMetrics
   onTick: () => void
   onVisibilityChange: (visible: boolean) => void
+}
+
+declare global {
+  interface Window {
+    __W2W_PERF__?: PerformanceMetrics
+  }
 }
 
 type PerformanceMonitorProps = {
@@ -72,6 +106,33 @@ export function initPerformanceMonitor(
   const decimalPlacesRatio = 10 ** 0
   let lastFactor = 0
   let previous = performance.now()
+  let frameSamples: FrameSample[] = []
+
+  const round = (value: number) => Math.round(value * 10) / 10
+  const calcAverageFps = (
+    samples: FrameSample[],
+    windowMs: number,
+    now: number,
+  ) => {
+    const windowSamples = samples.filter(
+      (sample) => now - sample.time <= windowMs,
+    )
+    if (!windowSamples.length) return 0
+    const totalMs = windowSamples.reduce((sum, sample) => sum + sample.delta, 0)
+    return round((windowSamples.length / totalMs) * 1000)
+  }
+
+  const calcLowOnePercent = (samples: FrameSample[]) => {
+    if (samples.length < 5) return 0
+    const sorted = [...samples].sort((a, b) => b.delta - a.delta)
+    const index = Math.max(0, Math.ceil(sorted.length * 0.01) - 1)
+    return round(1000 / sorted[index].delta)
+  }
+
+  const calcLiveFps = (samples: FrameSample[], delta: number) => {
+    if (samples.length < 5) return 0
+    return round(1000 / delta)
+  }
 
   const api: PerformanceMonitorApi = {
     visible: true,
@@ -81,6 +142,17 @@ export function initPerformanceMonitor(
     flipped: 0,
     refreshRate: 0,
     fallback: false,
+    metrics: {
+      currentFps: 0,
+      avg1s: 0,
+      avg5s: 0,
+      low1Percent: 0,
+      frameMs: 0,
+      worstFrameMs: 0,
+      sampleCount: 0,
+      lastUpdated: previous,
+      visible: true,
+    },
     samples: [],
     averages: [],
     subscriptions: new Map(),
@@ -89,15 +161,15 @@ export function initPerformanceMonitor(
       api.subscriptions.set(key, sub)
       return () => void api.subscriptions.delete(key)
     },
+    getSnapshot: () => ({ ...api.metrics }),
     onVisibilityChange: (visible) => {
       api.visible = visible
+      api.metrics.visible = visible
       api.samples = []
+      frameSamples = []
     },
     onTick: () => {
       const { samples, averages } = api
-
-      if (api.fallback) return // If the fallback has been reached, abort
-      if (averages.length >= iterations) return
 
       const now = performance.now()
       const delta = now - previous
@@ -106,8 +178,37 @@ export function initPerformanceMonitor(
       if (delta > 500) {
         // Throttling or sleep likely happening
         api.samples = []
+        frameSamples = []
         return
       }
+
+      frameSamples.push({ time: now, delta })
+      frameSamples = frameSamples.filter((sample) => now - sample.time <= 5000)
+
+      api.metrics = {
+        currentFps: calcLiveFps(frameSamples, delta),
+        avg1s:
+          frameSamples.length < 5 ? 0 : calcAverageFps(frameSamples, 1000, now),
+        avg5s:
+          frameSamples.length < 5 ? 0 : calcAverageFps(frameSamples, 5000, now),
+        low1Percent: calcLowOnePercent(frameSamples),
+        frameMs: round(delta),
+        worstFrameMs: round(
+          Math.max(...frameSamples.map((sample) => sample.delta)),
+        ),
+        sampleCount: frameSamples.length,
+        lastUpdated: round(now),
+        visible: api.visible,
+      }
+      api.fps = api.metrics.avg1s
+
+      if (typeof window !== 'undefined') {
+        window.__W2W_PERF__ = api.getSnapshot()
+      }
+      api.subscriptions.forEach((sub) => sub.onFrame?.(api))
+
+      if (api.fallback) return // If the fallback has been reached, abort
+      if (averages.length >= iterations) return
 
       samples.push(now)
       const msPassed = samples[samples.length - 1] - samples[0]
