@@ -8,9 +8,10 @@ import { updateControlsByMode } from './controls'
 
 const INTRO_LATTICE_SETTLE_MS = 250
 const INTRO_PREVIEW_WARMUP_TICKS = 2
+const INTRO_MEDIA_IDLE_STABLE_MS = 450
 const MODE_INIT_RETRY_MS = 100
 const MODE_INIT_RETRY_LIMIT = 100
-const PRELOAD_REVEAL_FALLBACK_MS = 8000
+const PRELOAD_REVEAL_FALLBACK_MS = 12000
 
 export const revealVoroforceContainer = () => {
   const state = store.getState()
@@ -39,6 +40,54 @@ const waitForVoroforceTicks = (count: number, callback: () => void) => {
   ticker.listenOnce('tick', () => {
     waitForVoroforceTicks(count - 1, callback)
   })
+}
+
+const waitForStableMediaIdle = (
+  callback: () => void,
+  stableMs = INTRO_MEDIA_IDLE_STABLE_MS,
+  fallbackMs = PRELOAD_REVEAL_FALLBACK_MS,
+) => {
+  const { voroforce } = store.getState()
+  const loader = voroforce?.loader
+  const ticker = voroforce?.ticker
+  if (!loader || !ticker) {
+    callback()
+    return
+  }
+
+  let done = false
+  let delivered = false
+  let stableTimeout: number | undefined
+
+  const deliver = () => {
+    if (!done || delivered) return
+    delivered = true
+    callback()
+  }
+
+  const finish = () => {
+    if (done) return
+    done = true
+    window.clearTimeout(stableTimeout)
+    loader.unlisten('idle', scheduleStableFinish)
+    ticker.listenOnce('tick', deliver)
+    window.setTimeout(deliver, 250)
+  }
+
+  const scheduleStableFinish = () => {
+    window.clearTimeout(stableTimeout)
+    stableTimeout = window.setTimeout(() => {
+      if (loader.loadingMediaLayers === 0) finish()
+    }, stableMs)
+  }
+
+  loader.listen('idle', scheduleStableFinish)
+
+  if (loader.loadingMediaLayers === 0) {
+    scheduleStableFinish()
+  }
+
+  window.setTimeout(finish, fallbackMs)
 }
 
 const handleModeChange = (mode: VOROFORCE_MODE): void => {
@@ -137,7 +186,9 @@ const handleIntro = (attempt = 0) => {
         setPlayedIntro(true)
       }
 
-      waitForVoroforceTicks(INTRO_PREVIEW_WARMUP_TICKS, revealIntro)
+      waitForVoroforceTicks(INTRO_PREVIEW_WARMUP_TICKS, () => {
+        waitForStableMediaIdle(revealIntro)
+      })
       window.setTimeout(revealIntro, PRELOAD_REVEAL_FALLBACK_MS)
     }, INTRO_LATTICE_SETTLE_MS)
   }, 1000)
@@ -177,9 +228,7 @@ export const handleMode = (attempt = 0) => {
       const revealAfterUpload = () => {
         if (revealed) return
         revealed = true
-        // Prefer one tick for GPU upload, but never let a missed tick trap the intro.
-        ticker.listenOnce('tick', revealVoroforceContainer)
-        window.setTimeout(revealVoroforceContainer, 250)
+        waitForStableMediaIdle(revealVoroforceContainer)
       }
 
       loader.listenOnce('preloaded', revealAfterUpload)

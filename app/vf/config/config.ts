@@ -31,7 +31,7 @@ export default {
   controls,
   display,
   simulation,
-  cells: 10000,
+  cells: 7500,
   multiThreading: {
     enabled: true,
     renderInParallel: true,

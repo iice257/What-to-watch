@@ -9,6 +9,14 @@ const parsePositiveNumberEnv = (
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
 
+const isWindowsChromiumRuntime = () => {
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+
+  return (
+    /Windows/i.test(userAgent) && /\b(Chrome|Chromium|Edg)\//i.test(userAgent)
+  )
+}
+
 const getRenderPixelRatio = () => {
   const envPixelRatio = parsePositiveNumberEnv(
     import.meta.env.VITE_RENDER_PIXEL_RATIO,
@@ -17,12 +25,18 @@ const getRenderPixelRatio = () => {
 
   const devicePixelRatio =
     typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-  const isWindowsChromium =
-    /Windows/i.test(userAgent) && /\b(Chrome|Chromium|Edg)\//i.test(userAgent)
+  const viewportPixels =
+    typeof window !== 'undefined' ? window.innerWidth * window.innerHeight : 0
+  const chromiumCap = viewportPixels >= 1_800_000 ? 0.68 : 0.72
 
-  return Math.min(devicePixelRatio, isWindowsChromium ? 0.85 : 1.25)
+  return Math.min(
+    devicePixelRatio,
+    isWindowsChromiumRuntime() ? chromiumCap : 1.25,
+  )
 }
+
+const getPixelSearchRadiusMod = (value: number) =>
+  isWindowsChromiumRuntime() ? 0 : value
 
 export default {
   scene: {
@@ -37,10 +51,10 @@ export default {
           transition: true,
           modes: {
             default: {
-              value: 1,
+              value: getPixelSearchRadiusMod(1),
             },
             [VOROFORCE_MODE.select]: {
-              value: 2,
+              value: getPixelSearchRadiusMod(2),
             },
           },
         },

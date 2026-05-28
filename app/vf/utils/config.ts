@@ -12,6 +12,10 @@ import {
 } from '../consts'
 import type { VoroforceCell, VoroforceInstance } from '../types'
 import type { Film } from './films'
+import {
+  clampRuntimeGridCellCount,
+  getRuntimeGridCellLimit,
+} from './grid-cells'
 import type { ConfigUniform } from './uniforms'
 
 export type CustomLink = {
@@ -77,8 +81,6 @@ const hasMovieFilters = (filters?: MovieFilters) =>
     filters?.genre || filters?.yearFrom || filters?.yearTo || filters?.length,
   )
 
-const MAX_RANDOM_GRID_CELLS = 10000
-
 const matchesLengthFilter = (runtime: number, length?: MovieLengthFilter) => {
   if (!length) return true
   if (!runtime) return false
@@ -127,11 +129,21 @@ const handleCustomLinkParam = (
 }
 
 export const getVoroforceConfig = (state: StoreState) => {
-  const { userConfig, preset: initialPreset, cellLimit, mode } = state
+  const {
+    userConfig,
+    preset: initialPreset,
+    cellLimit,
+    mode,
+    deviceClass,
+  } = state
   const urlParams = new URLSearchParams(window.location.search)
   const presetOverrideParam = urlParams.get('preset') as VOROFORCE_PRESET
   const cellsOverrideParam = urlParams.get('cells')
   const customLinkBase64Param = urlParams.get('customLinkBase64')
+  const isMobileRuntime =
+    state.ua.getDevice().type === 'mobile' ||
+    (typeof window !== 'undefined' &&
+      window.matchMedia('(max-width: 767px)').matches)
 
   let preset = initialPreset
   if (presetOverrideParam && VOROFORCE_PRESET[presetOverrideParam]) {
@@ -153,14 +165,18 @@ export const getVoroforceConfig = (state: StoreState) => {
   }
 
   const randomCellSelection = config.media?.randomCellSelection
+  const runtimeGridCellLimit = getRuntimeGridCellLimit({
+    deviceClass,
+    isMobileRuntime,
+  })
   if (randomCellSelection) {
     randomCellSelection.count = Math.min(
       randomCellSelection.count,
-      MAX_RANDOM_GRID_CELLS,
+      runtimeGridCellLimit,
     )
     randomCellSelection.poolSize = Math.min(
       randomCellSelection.poolSize,
-      MAX_RANDOM_GRID_CELLS,
+      runtimeGridCellLimit,
     )
   }
   const filteredMovieIds = getFilteredMovieIds(userConfig.movieFilters)
@@ -173,8 +189,18 @@ export const getVoroforceConfig = (state: StoreState) => {
     : config.cells
 
   config.cells = cellsOverrideParam
-    ? Number.parseInt(cellsOverrideParam)
-    : Math.min(cellLimit ?? config.cells, defaultCellLimit)
+    ? clampRuntimeGridCellCount({
+        cells: Number.parseInt(cellsOverrideParam),
+        defaultCellLimit,
+        deviceClass,
+        isMobileRuntime,
+      })
+    : clampRuntimeGridCellCount({
+        cells: cellLimit ?? config.cells,
+        defaultCellLimit,
+        deviceClass,
+        isMobileRuntime,
+      })
 
   if ('devTools' in userConfig) {
     config.devTools.enabled = !!userConfig.devTools
