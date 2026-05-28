@@ -17,6 +17,11 @@ const isWindowsChromiumRuntime = () => {
   )
 }
 
+const isChromiumRuntime = () => {
+  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
+  return /\b(Chrome|Chromium|Edg|OPR|CriOS)\//i.test(userAgent)
+}
+
 const getRenderPixelRatio = () => {
   const envPixelRatio = parsePositiveNumberEnv(
     import.meta.env.VITE_RENDER_PIXEL_RATIO,
@@ -27,16 +32,26 @@ const getRenderPixelRatio = () => {
     typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
   const viewportPixels =
     typeof window !== 'undefined' ? window.innerWidth * window.innerHeight : 0
-  const chromiumCap = viewportPixels >= 1_800_000 ? 0.68 : 0.72
+  const phoneViewportCap =
+    viewportPixels > 0 && viewportPixels < 520_000 ? 1.05 : 1.25
+  const windowsChromiumCap = viewportPixels >= 1_800_000 ? 0.48 : 0.52
+  const chromiumCap = viewportPixels >= 1_800_000 ? 0.56 : 0.72
 
   return Math.min(
     devicePixelRatio,
-    isWindowsChromiumRuntime() ? chromiumCap : 1.25,
+    isWindowsChromiumRuntime()
+      ? windowsChromiumCap
+      : isChromiumRuntime()
+        ? chromiumCap
+        : phoneViewportCap,
   )
 }
 
 const getPixelSearchRadiusMod = (value: number) =>
   isWindowsChromiumRuntime() ? 0 : value
+
+const getChromiumMotionMod = (value: number) =>
+  isChromiumRuntime() ? 0 : value
 
 export default {
   scene: {
@@ -208,7 +223,7 @@ export default {
           transition: true,
           modes: {
             default: {
-              value: 1,
+              value: getChromiumMotionMod(1),
             },
             [VOROFORCE_MODE.select]: {
               value: 0,
@@ -219,7 +234,7 @@ export default {
           transition: true,
           modes: {
             default: {
-              value: 1,
+              value: getChromiumMotionMod(1),
             },
             [VOROFORCE_MODE.select]: {
               value: 0,
@@ -230,7 +245,7 @@ export default {
           transition: true,
           modes: {
             default: {
-              value: 1,
+              value: getChromiumMotionMod(1),
             },
             [VOROFORCE_MODE.select]: {
               value: 0,

@@ -12,6 +12,7 @@ declare global {
       randomCellSelection?: VoroforceInstance['config']['media']['randomCellSelection']
       mediaPreload?: VoroforceInstance['config']['media']['preload']
       rendererPixelRatio?: number
+      multiThreading?: VoroforceInstance['config']['multiThreading']
     }
   }
 }
@@ -34,6 +35,7 @@ export const initVoroforce = ({
     randomCellSelection: config.media.randomCellSelection,
     mediaPreload: config.media.preload,
     rendererPixelRatio: config.display.renderer?.pixelRatio,
+    multiThreading: config.multiThreading,
   }
   store.setState({
     container,

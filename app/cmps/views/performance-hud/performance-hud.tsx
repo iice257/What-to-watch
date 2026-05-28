@@ -83,7 +83,7 @@ export const PerformanceHud = () => {
 
   return (
     <div
-      className='pointer-events-auto fixed right-3 bottom-12 z-40 max-w-[calc(100vw-1.5rem)] rounded-md border border-white/15 bg-black/70 px-2.5 py-2 text-white shadow-2xl shadow-black/30 backdrop-blur-md md:right-9 md:bottom-9'
+      className='pointer-events-auto fixed right-3 bottom-12 z-40 max-w-[calc(100vw-1.5rem)] rounded-md border border-white/15 bg-black/80 px-2.5 py-2 text-white md:right-9 md:bottom-9'
       data-perf-hud
       data-testid='performance-hud'
       onPointerDown={(event) => event.stopPropagation()}
