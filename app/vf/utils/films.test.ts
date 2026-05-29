@@ -86,6 +86,31 @@ describe('film similarity', () => {
     expect(first?.reasons).toContain('Shared Drama and Thriller DNA')
   })
 
+  it('keeps only the requested number of top matches in stable score order', () => {
+    const source = new Film(filmData({ id: 1, title: 'Source' }))
+    const batches = new Map([
+      [
+        0,
+        [
+          filmData({ id: 1, title: 'Source' }),
+          filmData({ id: 2, title: 'Closest', release_year: 2001 }),
+          filmData({ id: 3, title: 'Also Close', release_year: 2001 }),
+          filmData({
+            id: 4,
+            title: 'Distant',
+            genres: 'Comedy',
+            release_year: 1970,
+          }),
+        ],
+      ],
+    ])
+
+    expect(
+      getSimilarFilms(source, batches, 2).map(({ film }) => film.title),
+    ).toEqual(['Closest', 'Also Close'])
+    expect(getSimilarFilms(source, batches, 0)).toEqual([])
+  })
+
   it('falls back to an English-likely record for default display metadata', async () => {
     const batches = new Map([
       [

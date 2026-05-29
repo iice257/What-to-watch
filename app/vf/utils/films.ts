@@ -279,22 +279,35 @@ export const getSimilarFilms = (
   filmBatches: FilmBatches,
   limit = 6,
 ): SimilarFilmMatch[] => {
-  const candidates = [...filmBatches.values()]
-    .flat()
-    .filter(isEnglishLikelyFilmData)
-    .map((filmData) => new Film(filmData))
+  if (limit <= 0) return []
 
-  return candidates
-    .map((film) => {
+  const matches: SimilarFilmMatch[] = []
+  const addMatch = (match: SimilarFilmMatch) => {
+    const insertAt = matches.findIndex((entry) => match.score > entry.score)
+    if (insertAt === -1) {
+      if (matches.length < limit) matches.push(match)
+      return
+    }
+
+    matches.splice(insertAt, 0, match)
+    if (matches.length > limit) matches.pop()
+  }
+
+  for (const filmBatch of filmBatches.values()) {
+    for (const filmData of filmBatch) {
+      if (!isEnglishLikelyFilmData(filmData)) continue
+
+      const film = new Film(filmData)
       const score = scoreSimilarFilm(source, film)
+      if (!Number.isFinite(score) || score <= 0) continue
 
-      return {
+      addMatch({
         film,
         score,
         reasons: getSimilarityReasons(source, film),
-      }
-    })
-    .filter(({ score }) => Number.isFinite(score) && score > 0)
-    .sort((a, b) => b.score - a.score)
-    .slice(0, limit)
+      })
+    }
+  }
+
+  return matches
 }

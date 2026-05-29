@@ -31,6 +31,14 @@ type FrameSample = {
   delta: number
 }
 
+type FrameWindowStats = {
+  avg1s: number
+  avg5s: number
+  low1Percent: number
+  worstFrameMs: number
+  sampleCount: number
+}
+
 export type PerformanceMonitorApi = {
   /** Whether the page is visible */
   visible: boolean
@@ -109,29 +117,60 @@ export function initPerformanceMonitor(
   let frameSamples: FrameSample[] = []
 
   const round = (value: number) => Math.round(value * 10) / 10
-  const calcAverageFps = (
-    samples: FrameSample[],
-    windowMs: number,
-    now: number,
-  ) => {
-    const windowSamples = samples.filter(
-      (sample) => now - sample.time <= windowMs,
-    )
-    if (!windowSamples.length) return 0
-    const totalMs = windowSamples.reduce((sum, sample) => sum + sample.delta, 0)
-    return round((windowSamples.length / totalMs) * 1000)
-  }
-
-  const calcLowOnePercent = (samples: FrameSample[]) => {
-    if (samples.length < 5) return 0
-    const sorted = [...samples].sort((a, b) => b.delta - a.delta)
-    const index = Math.max(0, Math.ceil(sorted.length * 0.01) - 1)
-    return round(1000 / sorted[index].delta)
-  }
-
   const calcLiveFps = (samples: FrameSample[], delta: number) => {
     if (samples.length < 5) return 0
     return round(1000 / delta)
+  }
+  const calcWindowStats = (
+    samples: FrameSample[],
+    now: number,
+  ): FrameWindowStats => {
+    if (!samples.length) {
+      return {
+        avg1s: 0,
+        avg5s: 0,
+        low1Percent: 0,
+        worstFrameMs: 0,
+        sampleCount: 0,
+      }
+    }
+
+    let total1sMs = 0
+    let count1s = 0
+    let total5sMs = 0
+    let count5s = 0
+    let worstDelta = 0
+    const slowestLimit = Math.max(1, Math.ceil(samples.length * 0.01))
+    const slowestDeltas: number[] = []
+
+    for (const sample of samples) {
+      total5sMs += sample.delta
+      count5s += 1
+      worstDelta = Math.max(worstDelta, sample.delta)
+
+      const insertAt = slowestDeltas.findIndex((delta) => sample.delta > delta)
+      if (insertAt === -1) {
+        if (slowestDeltas.length < slowestLimit)
+          slowestDeltas.push(sample.delta)
+      } else {
+        slowestDeltas.splice(insertAt, 0, sample.delta)
+        if (slowestDeltas.length > slowestLimit) slowestDeltas.pop()
+      }
+
+      if (now - sample.time <= 1000) {
+        total1sMs += sample.delta
+        count1s += 1
+      }
+    }
+
+    return {
+      avg1s: count1s ? round((count1s / total1sMs) * 1000) : 0,
+      avg5s: count5s ? round((count5s / total5sMs) * 1000) : 0,
+      low1Percent:
+        samples.length < 5 ? 0 : round(1000 / slowestDeltas[slowestLimit - 1]),
+      worstFrameMs: round(worstDelta),
+      sampleCount: count5s,
+    }
   }
 
   const api: PerformanceMonitorApi = {
@@ -184,19 +223,16 @@ export function initPerformanceMonitor(
 
       frameSamples.push({ time: now, delta })
       frameSamples = frameSamples.filter((sample) => now - sample.time <= 5000)
+      const windowStats = calcWindowStats(frameSamples, now)
 
       api.metrics = {
         currentFps: calcLiveFps(frameSamples, delta),
-        avg1s:
-          frameSamples.length < 5 ? 0 : calcAverageFps(frameSamples, 1000, now),
-        avg5s:
-          frameSamples.length < 5 ? 0 : calcAverageFps(frameSamples, 5000, now),
-        low1Percent: calcLowOnePercent(frameSamples),
+        avg1s: frameSamples.length < 5 ? 0 : windowStats.avg1s,
+        avg5s: frameSamples.length < 5 ? 0 : windowStats.avg5s,
+        low1Percent: windowStats.low1Percent,
         frameMs: round(delta),
-        worstFrameMs: round(
-          Math.max(...frameSamples.map((sample) => sample.delta)),
-        ),
-        sampleCount: frameSamples.length,
+        worstFrameMs: windowStats.worstFrameMs,
+        sampleCount: windowStats.sampleCount,
         lastUpdated: round(now),
         visible: api.visible,
       }
