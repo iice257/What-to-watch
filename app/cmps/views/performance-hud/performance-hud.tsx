@@ -4,7 +4,7 @@ import { useShallowState } from '../../../store'
 import type { PerformanceMetrics } from '../../../vf'
 import { Button } from '../../ui/button'
 
-const HUD_COLLAPSED_KEY = 'w2w-perf-hud-collapsed'
+const HUD_COLLAPSED_KEY = 'w2w-perf-hud-collapsed-v2'
 const HUD_PINNED_KEY = 'w2w-perf-hud-pinned'
 
 const readStoredBoolean = (key: string, fallback: boolean) => {
@@ -46,10 +46,10 @@ export const PerformanceHud = () => {
     () => performanceMonitor?.getSnapshot() ?? emptyMetrics,
   )
   const [collapsed, setCollapsed] = useState(() =>
-    readStoredBoolean(HUD_COLLAPSED_KEY, false),
+    readStoredBoolean(HUD_COLLAPSED_KEY, true),
   )
   const [pinned, setPinned] = useState(() =>
-    readStoredBoolean(HUD_PINNED_KEY, true),
+    readStoredBoolean(HUD_PINNED_KEY, false),
   )
 
   useEffect(() => {

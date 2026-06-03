@@ -1,6 +1,6 @@
 import { DEVICE_CLASS } from '../consts'
 
-export const DESKTOP_RANDOM_GRID_CELLS = 7500
+export const DESKTOP_RANDOM_GRID_CELLS = 10000
 export const MOBILE_RANDOM_GRID_CELLS = 5000
 
 export const getRuntimeGridCellLimit = ({

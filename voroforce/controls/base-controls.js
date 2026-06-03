@@ -96,10 +96,6 @@ export default class BaseControls extends CustomEventTarget {
       if (this.isResizing) return
       const primaryIndex = indices?.[0]
       if (primaryIndex === undefined) {
-        console.warn('No cell found at position', {
-          x: position.x,
-          y: position.y,
-        })
         this.handlePointerOut()
         return false
       }

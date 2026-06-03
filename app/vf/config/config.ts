@@ -31,7 +31,7 @@ export default {
   controls,
   display,
   simulation,
-  cells: 7500,
+  cells: 10000,
   multiThreading: {
     enabled: true,
     renderInParallel: true,
@@ -47,6 +47,10 @@ export default {
   handleVisibilityChange: {
     enabled: true,
     hiddenDelay: 5000,
+  },
+  ticker: {
+    mode: 'manual',
+    fpsCap: 30,
   },
   lattice: baseLatticeConfig,
   modes: modeConfigs,

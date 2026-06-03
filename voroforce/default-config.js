@@ -42,6 +42,7 @@ export const defaultConfig = {
   },
   ticker: {
     mode: 'manual', // 'auto' or 'manual'
+    fpsCap: 60,
   },
   benchmark: {
     enabled: false,

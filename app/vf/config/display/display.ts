@@ -34,8 +34,8 @@ const getRenderPixelRatio = () => {
     typeof window !== 'undefined' ? window.innerWidth * window.innerHeight : 0
   const phoneViewportCap =
     viewportPixels > 0 && viewportPixels < 520_000 ? 1.05 : 1.25
-  const windowsChromiumCap = viewportPixels >= 1_800_000 ? 0.48 : 0.52
-  const chromiumCap = viewportPixels >= 1_800_000 ? 0.56 : 0.72
+  const windowsChromiumCap = viewportPixels >= 1_800_000 ? 0.72 : 0.85
+  const chromiumCap = viewportPixels >= 1_800_000 ? 0.85 : 1
 
   return Math.min(
     devicePixelRatio,
@@ -47,11 +47,7 @@ const getRenderPixelRatio = () => {
   )
 }
 
-const getPixelSearchRadiusMod = (value: number) =>
-  isWindowsChromiumRuntime() ? 0 : value
-
-const getChromiumMotionMod = (value: number) =>
-  isChromiumRuntime() ? 0 : value
+const getPixelSearchRadiusMod = (value: number) => value
 
 export default {
   scene: {
@@ -135,7 +131,6 @@ export default {
               value: 0,
             },
             [VOROFORCE_MODE.preview]: {
-              // value: 1.25,
               value: 0.75,
               // value: 0,
             },
@@ -223,7 +218,7 @@ export default {
           transition: true,
           modes: {
             default: {
-              value: getChromiumMotionMod(1),
+              value: 1,
             },
             [VOROFORCE_MODE.select]: {
               value: 0,
@@ -234,7 +229,7 @@ export default {
           transition: true,
           modes: {
             default: {
-              value: getChromiumMotionMod(1),
+              value: 1,
             },
             [VOROFORCE_MODE.select]: {
               value: 0,
@@ -245,7 +240,7 @@ export default {
           transition: true,
           modes: {
             default: {
-              value: getChromiumMotionMod(1),
+              value: 1,
             },
             [VOROFORCE_MODE.select]: {
               value: 0,

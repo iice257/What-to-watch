@@ -110,6 +110,7 @@ export class Voroforce extends CustomEventTarget {
     this.dimensions = new Dimensions(this.container)
     this.ticker = new (this.tickerMode === 'auto' ? AutoTicker : ManualTicker)(
       this.devTools?.fpsGraph,
+      this.config.ticker?.fpsCap,
     )
 
     this.loader = new Loader(

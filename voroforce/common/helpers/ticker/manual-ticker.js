@@ -6,9 +6,11 @@ export class ManualTicker extends CustomEventTarget {
   totalPausedTime = 0
   pauseStart = 0
   running = false
-  constructor(fpsGraph) {
+  constructor(fpsGraph, fpsCap = 60) {
     super()
     this.fpsGraph = fpsGraph
+    this.fpsCap = Number.isFinite(fpsCap) && fpsCap > 0 ? fpsCap : 60
+    this.frameInterval = 1000 / this.fpsCap
     this.lastFrameTime = performance.now()
     this.current = this.lastFrameTime
     this.pauseStart = this.lastFrameTime
@@ -26,13 +28,15 @@ export class ManualTicker extends CustomEventTarget {
       this.totalPausedTime += performance.now() - this.pauseStart
     }
 
-    requestAnimationFrame(this.tick)
+    this.scheduleNextTick()
   }
 
   stop() {
     this.running = false
     this.pauseStart = performance.now()
     this.nextRequests = 0
+    clearTimeout(this.frameTimeout)
+    this.frameTimeout = undefined
   }
 
   kill() {
@@ -65,7 +69,24 @@ export class ManualTicker extends CustomEventTarget {
     if (!this.running) return
     this.nextRequests++
     if (this.nextRequests !== 2) return
-    requestAnimationFrame(this.tick)
+    const elapsedSinceLastFrame = performance.now() - this.current
+    const delay = Math.max(0, this.frameInterval - elapsedSinceLastFrame)
+    this.scheduleNextTick(delay)
+  }
+
+  scheduleNextTick(delay = 0) {
+    if (!this.running || this.frameTimeout) return
+    const requestTick = () => {
+      this.frameTimeout = undefined
+      if (this.running) requestAnimationFrame(this.tick)
+    }
+
+    if (delay > 0) {
+      this.frameTimeout = setTimeout(requestTick, delay)
+      return
+    }
+
+    requestTick()
   }
 
   freeze() {

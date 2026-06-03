@@ -13,7 +13,7 @@ precision highp float;
 #define X_SCALE 1.
 
 #define DYNAMIC_MAX_NEIGHBORS 0
-#define MAX_NEIGHBORS_LEVEL_1 6u
+#define MAX_NEIGHBORS_LEVEL_1 8u
 #define MAX_NEIGHBORS_LEVEL_2 24u
 #define MAX_NEIGHBORS_LEVEL_3 48u
 
@@ -31,7 +31,7 @@ precision highp float;
 #define BULGE_BASE_STRENGTH .5
 #define BULGE_BASE_RADIUS 1.
 
-#define NOISE 0
+#define NOISE 1
 #define NOISE_OCTAVE 1
 #define NOISE_OCTAVE_LARGE_SCALE 1.
 #define NOISE_OCTAVE_LARGE_AMPLITUDE_MOD 0.05
@@ -41,14 +41,14 @@ precision highp float;
 #define NOISE_OCTAVE_SMALL_AMPLITUDE_MOD 0.
 #define NOISE_CENTER_OFFSET 1
 
-#define RIPPLE 0
+#define RIPPLE 1
 #define RIPPLE_RADIUS 2.0
 #define RIPPLE_STRENGTH 0.02
 #define RIPPLE_FREQUENCY 30.0
 #define RIPPLE_SPEED 2.
 #define RIPPLE_DECAY .75
 
-#define WEIGHTED_DIST 0
+#define WEIGHTED_DIST 1
 #define WEIGHT_OFFSET_SCALE 0.25
 #define WEIGHT_OFFSET_SCALE_MEDIA_MOD 9.25
 #define X_DIST_SCALING 1
@@ -69,12 +69,11 @@ precision highp float;
 #define MEDIA_ROTATE_FACTOR 1.
 #define MEDIA_BULGE_MODE 0 // todo other media bulge modes
 #define MEDIA_BBOX_OVERFLOW_MODE 1 // 0 = debug (red), 1 = clamp edges, 2 = tiles, 3 = flipped tiles
-#define MEDIA_BBOX_MAX_NEIGHBORS 3u
 
 #define EDGES_VISIBLE 1
-#define EDGE_SMIN_SCALING 0
+#define EDGE_SMIN_SCALING 1
 #define EDGE_SMIN_SCALING_COMPENSATION 0 // switch this on when doing heavy rounding in 3d?
-#define EDGE_CELL_SCALING 0
+#define EDGE_CELL_SCALING 1
 #define EDGE_CELL_SCALING_MODE 0 // mode 1 = media boxes if media enabled
 #define EDGE_BORDER_THICKNESS_BASE 0.075
 #define EDGE_CELL_SCALING_BORDER_THICKNESS 0
@@ -90,7 +89,7 @@ precision highp float;
 //#define EDGE_BORDER_ROUNDNESS_MIN 0.
 //#define EDGE_BORDER_ROUNDNESS_MAX 1.
 
-#define POST_UNWEIGHTED_EFFECT 0
+#define POST_UNWEIGHTED_EFFECT 1
 #define POST_UNWEIGHTED_MOD_OPACITY 1.
 #define POST_UNWEIGHTED_MOD_GRAYSCALE 0.75
 
@@ -993,7 +992,7 @@ vec4 calcMediaBbox(in uint index, in vec4 cellCoords, in float bulgeFactor, inou
     uint neighborsPosition = neighborsTexData(index*2u);
     uint neighborsLength = min(neighborsTexData(index*2u+1u), MAX_NEIGHBORS_LEVEL_1);
 
-    for (uint i = 0u; i < min(neighborsLength, MEDIA_BBOX_MAX_NEIGHBORS); i++) {
+    for (uint i = 0u; i < neighborsLength; i++) {
         uint neighborIndex = neighborsTexData(neighborsPosition+i);
         vec4 neighborCoords = fetchCellCoords(neighborIndex);
 
