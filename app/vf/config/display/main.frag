@@ -13,7 +13,7 @@ precision highp float;
 #define X_SCALE 1.
 
 #define DYNAMIC_MAX_NEIGHBORS 0
-#define MAX_NEIGHBORS_LEVEL_1 8u
+#define MAX_NEIGHBORS_LEVEL_1 6u
 #define MAX_NEIGHBORS_LEVEL_2 24u
 #define MAX_NEIGHBORS_LEVEL_3 48u
 
@@ -69,6 +69,7 @@ precision highp float;
 #define MEDIA_ROTATE_FACTOR 1.
 #define MEDIA_BULGE_MODE 0 // todo other media bulge modes
 #define MEDIA_BBOX_OVERFLOW_MODE 1 // 0 = debug (red), 1 = clamp edges, 2 = tiles, 3 = flipped tiles
+#define MEDIA_BBOX_MAX_NEIGHBORS 8u
 
 #define EDGES_VISIBLE 1
 #define EDGE_SMIN_SCALING 1
@@ -819,11 +820,19 @@ void mediaColor(inout vec3 c, inout float a, in Plot plot) {
     vec2 mediaTexcoord = tileOffset + mediaUv * tileSize;
     vec2 blurVec = mediaUv - vec2(0.5);
     float blurLen = length(blurVec);
-    vec2 blurDir = blurLen > 0.001 ? blurVec / blurLen : vec2(1., 0.);
-    vec2 blurOffset = blurDir * tileSize * 0.16;
+    vec2 uvBlurDir = blurLen > 0.001 ? blurVec / blurLen : vec2(1., 0.);
+    vec2 focusVec = normalizedPCoords() - centerForceNCoords;
+    float focusLen = length(focusVec);
+    vec2 fieldBlurDir = focusLen > 0.001 ? focusVec / focusLen : uvBlurDir;
+    vec2 blurDir = uvBlurDir * 0.65 + fieldBlurDir * 0.35;
+    float blurDirLen = length(blurDir);
+    blurDir = blurDirLen > 0.001 ? blurDir / blurDirLen : uvBlurDir;
+    float outOfFocusBlur = smoothstep(0.68, 1., plot.mediaBulgeFactor);
+    float edgeSoftness = smoothstep(0.55, 1.15, blurLen * 2.);
+    vec2 blurOffset = blurDir * tileSize * mix(0.055, 0.135, edgeSoftness);
     vec2 tileMin = tileOffset + tileSize * 0.015;
     vec2 tileMax = tileOffset + tileSize * 0.985;
-    float outerBlur = fOuterMotionBlurMod * smoothstep(0.72, 1., plot.mediaBulgeFactor);
+    float outerBlur = fOuterMotionBlurMod * outOfFocusBlur;
 
     if (iMediaVersion == 0) {
         #if MEDIA_BICUBIC_FILTER == 1
@@ -990,7 +999,7 @@ vec4 calcMediaBbox(in uint index, in vec4 cellCoords, in float bulgeFactor, inou
     #endif
 
     uint neighborsPosition = neighborsTexData(index*2u);
-    uint neighborsLength = min(neighborsTexData(index*2u+1u), MAX_NEIGHBORS_LEVEL_1);
+    uint neighborsLength = min(neighborsTexData(index*2u+1u), MEDIA_BBOX_MAX_NEIGHBORS);
 
     for (uint i = 0u; i < neighborsLength; i++) {
         uint neighborIndex = neighborsTexData(neighborsPosition+i);

@@ -6,9 +6,9 @@ import {
 } from './grid-cells'
 
 describe('runtime grid cell caps', () => {
-  it('uses 10k as the desktop cap', () => {
+  it('uses 7.5k as the desktop cap', () => {
     expect(getRuntimeGridCellLimit({ deviceClass: DEVICE_CLASS.low })).toBe(
-      10000,
+      7500,
     )
     expect(
       clampRuntimeGridCellCount({
@@ -16,7 +16,7 @@ describe('runtime grid cell caps', () => {
         defaultCellLimit: 10000,
         deviceClass: DEVICE_CLASS.low,
       }),
-    ).toBe(10000)
+    ).toBe(7500)
   })
 
   it('keeps mobile capped at 5k even when desktop cells are requested', () => {
