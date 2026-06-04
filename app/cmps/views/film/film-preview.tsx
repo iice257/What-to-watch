@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  type MouseEventHandler,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 
 import {
   selectIsPreviewMode,
@@ -22,7 +28,7 @@ import { FilmRatingGauge } from './shared/film-rating-gauge'
 
 export const FilmPreview = ({ poster = false }) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const innerRef = useRef<HTMLDivElement>(null)
+  const innerRef = useRef<HTMLButtonElement>(null)
   const isSmallScreen = useMediaQuery(down('md'))
   const isLandscape = useMediaQuery(orientation('landscape'))
   const isOnlyMdScreen = useMediaQuery(only('md'))
@@ -271,11 +277,52 @@ export const FilmPreview = ({ poster = false }) => {
     [dimensionsRef],
   )
 
+  const selectVisibleFilm = useCallback(() => {
+    const controls = voroforce?.controls
+    if (!controls) return
+
+    const targetCell =
+      primaryCellRef.current ??
+      controls.cells?.focused ??
+      controls.cells?.selected
+    if (!targetCell) return
+
+    const hadSelection = controls.hasSelection?.() ?? false
+    const wasSelected = controls.cells?.selectedIndex === targetCell.index
+    if (hadSelection && wasSelected) {
+      controls.deselect?.()
+      return
+    }
+
+    controls.selectCell?.(targetCell)
+    if (hadSelection) {
+      controls.pinPointer?.(targetCell)
+    } else {
+      controls.resetZoom?.()
+    }
+  }, [voroforce])
+
+  const handleTitleCardClick = useCallback<
+    MouseEventHandler<HTMLButtonElement>
+  >(
+    (event) => {
+      event.preventDefault()
+      event.stopPropagation()
+      selectVisibleFilm()
+    },
+    [selectVisibleFilm],
+  )
+
   if (!poster) {
     if (isSmallScreen && isSelectMode) return null
 
     return film ? (
-      <div className='pointer-events-none fixed top-7 left-6 z-20 max-w-[calc(100vw-3rem)] text-white md:top-9 md:left-9 md:max-w-[34rem]'>
+      <button
+        aria-label={`Open ${film.title}`}
+        className='pointer-events-auto fixed top-7 left-6 z-20 max-w-[calc(100vw-3rem)] cursor-pointer border-0 bg-transparent p-0 text-left text-white outline-none focus-visible:ring-1 focus-visible:ring-white/70 md:top-9 md:left-9 md:max-w-[34rem]'
+        onClick={handleTitleCardClick}
+        type='button'
+      >
         <div className='flex max-w-full items-start gap-4 md:gap-4'>
           <FilmPoster
             film={film}
@@ -299,7 +346,7 @@ export const FilmPreview = ({ poster = false }) => {
               {film.genres?.slice(0, 3).map((genre) => (
                 <Badge
                   key={genre}
-                  className='max-w-full truncate px-4 py-2 text-sm leading-none md:px-2.5 md:py-0.5 md:text-[0.6rem]'
+                  className='max-w-full cursor-pointer truncate px-4 py-2 text-sm leading-none md:px-2.5 md:py-0.5 md:text-[0.6rem]'
                 >
                   {genre}
                 </Badge>
@@ -310,15 +357,23 @@ export const FilmPreview = ({ poster = false }) => {
             </div>
           </div>
         </div>
-      </div>
+      </button>
     ) : null
   }
+
+  const previewCardVisible =
+    uiVisible && isPreviewMode && (hasAppliedStyles || isStatic)
 
   return (
     <>
       {film && !uiVisible && (
         <div className='pointer-events-none fixed inset-x-4 bottom-16 z-20 flex justify-center md:top-9 md:bottom-auto md:justify-start'>
-          <div className='max-w-full rounded-md border border-white/10 bg-black/62 px-4 py-3 text-white shadow-2xl shadow-black/40 backdrop-blur-md md:px-3 md:py-2'>
+          <button
+            aria-label={`Open ${film.title}`}
+            className='pointer-events-auto max-w-full cursor-pointer rounded-md border border-white/10 bg-black/62 px-4 py-3 text-left text-white shadow-2xl shadow-black/40 outline-none backdrop-blur-md focus-visible:ring-1 focus-visible:ring-white/70 md:px-3 md:py-2'
+            onClick={handleTitleCardClick}
+            type='button'
+          >
             <div className='line-clamp-2 break-words font-black text-2xl leading-none md:max-w-[32rem] md:text-2xl'>
               {film.title}
               {film.year ? (
@@ -332,7 +387,7 @@ export const FilmPreview = ({ poster = false }) => {
                 {film.tagline}
               </div>
             ) : null}
-          </div>
+          </button>
         </div>
       )}
       {film && (
@@ -342,17 +397,24 @@ export const FilmPreview = ({ poster = false }) => {
             'pointer-events-none fixed top-0 left-0 z-10 w-full max-w-full p-4 opacity-0 transition-opacity duration-300 md:p-9 md:max-lg:landscape:w-auto md:max-lg:landscape:max-w-2/3',
             {
               'md:h-52 md:w-300 md:p-0 md:will-change-transform': !isStatic,
-              '!opacity-100':
-                uiVisible && isPreviewMode && (hasAppliedStyles || isStatic),
+              '!opacity-100': previewCardVisible,
             },
           )}
         >
-          <div
+          <button
+            aria-label={`Open ${film.title}`}
             ref={innerRef}
-            className={cn('flex origin-top-left flex-row gap-3 lg:gap-9', {
-              'md:will-change-[transform,opacity]': !isStatic,
-              'flex-row-reverse': reversedX,
-            })}
+            className={cn(
+              'flex origin-top-left flex-row gap-3 border-0 bg-transparent p-0 text-left text-inherit lg:gap-9',
+              {
+                'pointer-events-auto cursor-pointer': previewCardVisible,
+                'pointer-events-none': !previewCardVisible,
+                'md:will-change-[transform,opacity]': !isStatic,
+                'flex-row-reverse': reversedX,
+              },
+            )}
+            onClick={handleTitleCardClick}
+            type='button'
           >
             {poster && (
               <FilmPoster
@@ -401,7 +463,7 @@ export const FilmPreview = ({ poster = false }) => {
                   {film.genres?.map((genre) => (
                     <Badge
                       key={genre}
-                      className='whitespace-nowrap text-[0.6rem] leading-none lg:text-xs'
+                      className='cursor-pointer whitespace-nowrap text-[0.6rem] leading-none lg:text-xs'
                     >
                       {genre}
                     </Badge>
@@ -410,7 +472,7 @@ export const FilmPreview = ({ poster = false }) => {
               </div>
               <FilmRatingGauge value={film.rating} />
             </div>
-          </div>
+          </button>
         </div>
       )}
     </>

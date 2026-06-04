@@ -4,19 +4,41 @@ import {
   clampRuntimeGridCellCount,
   getRuntimeGridCellLimit,
 } from './grid-cells'
+import { RENDER_PROFILE_IDS } from './render-profile'
 
 describe('runtime grid cell caps', () => {
-  it('uses 7.5k as the desktop cap', () => {
-    expect(getRuntimeGridCellLimit({ deviceClass: DEVICE_CLASS.low })).toBe(
-      7500,
-    )
+  it('uses 7k as the Chromium desktop cap', () => {
+    expect(
+      getRuntimeGridCellLimit({
+        deviceClass: DEVICE_CLASS.low,
+        renderProfileId: RENDER_PROFILE_IDS.chromiumDesktop,
+      }),
+    ).toBe(7000)
     expect(
       clampRuntimeGridCellCount({
         cells: CELL_LIMIT.xs,
         defaultCellLimit: 10000,
         deviceClass: DEVICE_CLASS.low,
+        renderProfileId: RENDER_PROFILE_IDS.chromiumDesktop,
       }),
-    ).toBe(7500)
+    ).toBe(7000)
+  })
+
+  it('keeps default desktop runtimes at 10k', () => {
+    expect(
+      getRuntimeGridCellLimit({
+        deviceClass: DEVICE_CLASS.low,
+        renderProfileId: RENDER_PROFILE_IDS.default,
+      }),
+    ).toBe(10000)
+    expect(
+      clampRuntimeGridCellCount({
+        cells: CELL_LIMIT.xs,
+        defaultCellLimit: 10000,
+        deviceClass: DEVICE_CLASS.low,
+        renderProfileId: RENDER_PROFILE_IDS.default,
+      }),
+    ).toBe(10000)
   })
 
   it('keeps mobile capped at 5k even when desktop cells are requested', () => {
@@ -38,6 +60,7 @@ describe('runtime grid cell caps', () => {
         cells: 2500,
         defaultCellLimit: 10000,
         deviceClass: DEVICE_CLASS.low,
+        renderProfileId: RENDER_PROFILE_IDS.chromiumDesktop,
       }),
     ).toBe(2500)
   })

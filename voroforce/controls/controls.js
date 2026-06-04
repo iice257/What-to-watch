@@ -606,10 +606,10 @@ export default class Controls extends BaseControls {
 
   zoom = 1
   onWheel(e) {
-    // e.preventDefault()
     this.logger?.debug('onWheel', { deltaY: e.deltaY })
 
     if (!this.options.zoom) return
+    if (e.cancelable) e.preventDefault()
 
     const deltaScale = Math.abs(e.deltaY) * 0.001
     this.zoom =
@@ -629,9 +629,16 @@ export default class Controls extends BaseControls {
       }
     } else {
       if (zoom <= this.options.zoomMin) {
-        this.deselect()
+        this.returnToCanvas()
       }
     }
+  }
+
+  returnToCanvas() {
+    this.deselect()
+    this.unpinPointer()
+    this.unfreezePointer()
+    this.resetZoom()
   }
 
   resetZoom() {
@@ -655,7 +662,7 @@ export default class Controls extends BaseControls {
   initWheelEventListeners() {
     if (this.boundOnWheel) return
     this.boundOnWheel = this.onWheel.bind(this)
-    window.addEventListener('wheel', this.boundOnWheel)
+    window.addEventListener('wheel', this.boundOnWheel, { passive: false })
   }
 
   removeWheelEventListeners() {

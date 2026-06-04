@@ -1,5 +1,9 @@
 import { THEME } from '../../../consts'
 import { VOROFORCE_MODE } from '../../consts'
+import {
+  getRenderProfile,
+  getRenderProfilePixelRatioCap,
+} from '../../utils/render-profile'
 import mainFrag from './main.frag'
 
 const parsePositiveNumberEnv = (
@@ -9,18 +13,7 @@ const parsePositiveNumberEnv = (
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined
 }
 
-const isWindowsChromiumRuntime = () => {
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-
-  return (
-    /Windows/i.test(userAgent) && /\b(Chrome|Chromium|Edg)\//i.test(userAgent)
-  )
-}
-
-const isChromiumRuntime = () => {
-  const userAgent = typeof navigator !== 'undefined' ? navigator.userAgent : ''
-  return /\b(Chrome|Chromium|Edg|OPR|CriOS)\//i.test(userAgent)
-}
+const renderProfile = getRenderProfile()
 
 const getRenderPixelRatio = () => {
   const envPixelRatio = parsePositiveNumberEnv(
@@ -32,18 +25,10 @@ const getRenderPixelRatio = () => {
     typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
   const viewportPixels =
     typeof window !== 'undefined' ? window.innerWidth * window.innerHeight : 0
-  const phoneViewportCap =
-    viewportPixels > 0 && viewportPixels < 520_000 ? 1.05 : 1.25
-  const windowsChromiumCap = viewportPixels >= 1_800_000 ? 0.72 : 0.85
-  const chromiumCap = viewportPixels >= 1_800_000 ? 0.85 : 1
 
   return Math.min(
     devicePixelRatio,
-    isWindowsChromiumRuntime()
-      ? windowsChromiumCap
-      : isChromiumRuntime()
-        ? chromiumCap
-        : phoneViewportCap,
+    getRenderProfilePixelRatioCap(renderProfile, { viewportPixels }),
   )
 }
 
@@ -56,6 +41,7 @@ export default {
     },
     main: {
       fragmentShader: mainFrag,
+      defines: renderProfile.shaderDefines,
       uniforms: {
         iForcedMaxNeighborLevel: { value: 0 },
         fPixelSearchRadiusMod: {
@@ -188,7 +174,7 @@ export default {
           },
         },
         fOuterMotionBlurMod: {
-          value: 0.16,
+          value: renderProfile.outerMotionBlurMod,
         },
         fBaseXDistScale: {
           transition: true,
@@ -257,5 +243,9 @@ export default {
   },
   renderer: {
     pixelRatio: getRenderPixelRatio(),
+  },
+  renderProfile: {
+    id: renderProfile.id,
+    label: renderProfile.label,
   },
 }

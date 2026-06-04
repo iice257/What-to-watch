@@ -16,6 +16,7 @@ import {
   clampRuntimeGridCellCount,
   getRuntimeGridCellLimit,
 } from './grid-cells'
+import { getRenderProfile } from './render-profile'
 import type { ConfigUniform } from './uniforms'
 
 export type CustomLink = {
@@ -164,10 +165,19 @@ export const getVoroforceConfig = (state: StoreState) => {
     handleCustomLinkParam(customLinkBase64Param, state)
   }
 
+  const renderProfile = getRenderProfile({ isMobileRuntime })
+  if (renderProfile.tickerFpsCap) {
+    config.ticker = {
+      ...config.ticker,
+      fpsCap: renderProfile.tickerFpsCap,
+    }
+  }
+
   const randomCellSelection = config.media?.randomCellSelection
   const runtimeGridCellLimit = getRuntimeGridCellLimit({
     deviceClass,
     isMobileRuntime,
+    renderProfileId: renderProfile.id,
   })
   if (randomCellSelection) {
     randomCellSelection.count = Math.min(
@@ -194,12 +204,14 @@ export const getVoroforceConfig = (state: StoreState) => {
         defaultCellLimit,
         deviceClass,
         isMobileRuntime,
+        renderProfileId: renderProfile.id,
       })
     : clampRuntimeGridCellCount({
         cells: cellLimit ?? config.cells,
         defaultCellLimit,
         deviceClass,
         isMobileRuntime,
+        renderProfileId: renderProfile.id,
       })
 
   if ('devTools' in userConfig) {
