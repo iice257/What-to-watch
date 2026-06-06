@@ -108,7 +108,7 @@ export function AddCustomLinkModal() {
         }),
       }}
       innerContentProps={{
-        className: 'bg-background p-6 xl:p-9 border',
+        className: 'p-5 md:p-6',
       }}
       overlay
       portal={false}
@@ -116,15 +116,22 @@ export function AddCustomLinkModal() {
       disableVoroforceKeyboardControls
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className=''>
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <div className='mb-5 border-white/10 border-b pb-4'>
+            <div className='panel-kicker mb-2'>External services</div>
+            <h3 className='panel-title'>Add a custom link</h3>
+            <p className='panel-description mt-1'>
+              Create a reusable movie link from a title or database ID.
+            </p>
+          </div>
           <div className='grid gap-4 py-4'>
             <FormField
               control={form.control}
               name='name'
               render={({ field }) => (
-                <FormItem className='grid grid-cols-4 items-center gap-4'>
-                  <FormLabel className='m-0 text-right'>Name</FormLabel>
-                  <FormControl className='col-span-3'>
+                <FormItem className='grid gap-1.5'>
+                  <FormLabel className='m-0'>Name</FormLabel>
+                  <FormControl>
                     <Input {...field} />
                   </FormControl>
                 </FormItem>
@@ -134,9 +141,9 @@ export function AddCustomLinkModal() {
               control={form.control}
               name='baseUrl'
               render={({ field }) => (
-                <FormItem className='grid grid-cols-4 items-center gap-4'>
-                  <FormLabel className='m-0 text-right'>Base URL</FormLabel>
-                  <FormControl className='col-span-3'>
+                <FormItem className='grid gap-1.5'>
+                  <FormLabel className='m-0'>Base URL</FormLabel>
+                  <FormControl>
                     <Input {...field} />
                   </FormControl>
                 </FormItem>
@@ -146,14 +153,14 @@ export function AddCustomLinkModal() {
               control={form.control}
               name='property'
               render={({ field }) => (
-                <FormItem className='grid grid-cols-4 items-center gap-4'>
-                  <FormLabel className='m-0 text-right'>Property</FormLabel>
+                <FormItem className='grid gap-1.5'>
+                  <FormLabel className='m-0'>Property</FormLabel>
                   <Select
                     onValueChange={field.onChange}
                     defaultValue={field.value}
                   >
                     <FormControl>
-                      <SelectTrigger className='col-span-3 m-0'>
+                      <SelectTrigger className='m-0'>
                         <SelectValue />
                       </SelectTrigger>
                     </FormControl>
@@ -170,10 +177,8 @@ export function AddCustomLinkModal() {
               control={form.control}
               name='slug'
               render={({ field }) => (
-                <FormItem className='grid grid-cols-4 items-center gap-4'>
-                  <FormLabel className='m-0 text-right'>
-                    Slugify value
-                  </FormLabel>
+                <FormItem className='flex items-center justify-between rounded-md border border-white/10 bg-white/[0.035] p-3'>
+                  <FormLabel className='m-0'>Slugify value</FormLabel>
                   <FormControl>
                     <Switch
                       checked={field.value}

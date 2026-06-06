@@ -1,4 +1,4 @@
-import { HeartOff, HeartPlus, Plus } from 'lucide-react'
+import { Heart, HeartOff, Plus, X } from 'lucide-react'
 import type { DialogProps } from 'vaul'
 import { useShallowState } from '../../../../../store'
 import { cn } from '../../../../../utils/tw'
@@ -38,12 +38,12 @@ export const FilmViewFooter = ({
   return (
     <div
       className={cn(
-        'relative flex w-full flex-row justify-between gap-3 px-4 py-4 md:gap-6 md:p-6 lg:p-6 xl:p-9',
+        'cinematic-surface relative flex w-full flex-row justify-between gap-2 rounded-none border-x-0 border-b-0 px-4 py-3 md:px-6',
         className,
         {},
       )}
     >
-      <div className={cn('pointer-events-auto flex flex-row gap-3')}>
+      <div className={cn('pointer-events-auto flex min-w-0 flex-row gap-2')}>
         <StdLinks film={film} />
         <CustomLinks film={film} />
         <TooltipProvider delayDuration={0}>
@@ -51,10 +51,10 @@ export const FilmViewFooter = ({
             <TooltipTrigger asChild>
               <Button
                 size='icon'
-                className={cn(
-                  'hidden cursor-pointer rounded-lg border-foreground md:inline-flex md:backdrop-blur-lg',
-                )}
+                className={cn('hidden cursor-pointer md:inline-flex')}
                 variant='outline'
+                aria-label='Add custom link type'
+                title='Add custom link type'
                 // onClick={toggleAddCustomLinkTypeOpen}
                 onClick={() => setAddCustomLinkTypeOpen(direction)}
               >
@@ -74,6 +74,9 @@ export const FilmViewFooter = ({
               <Button
                 size='icon'
                 variant={isFavorite ? 'default' : 'outline'}
+                aria-label={
+                  isFavorite ? 'Remove from favorites' : 'Add to favorites'
+                }
                 onClick={() => {
                   if (isFavorite) {
                     delete userConfig.favorites?.[film.tmdbId]
@@ -91,9 +94,9 @@ export const FilmViewFooter = ({
                   }
                   setUserConfig(userConfig)
                 }}
-                className='pointer-events-auto hidden rounded-lg border-foreground backdrop-blur-lg md:inline-flex'
+                className='pointer-events-auto hidden md:inline-flex'
               >
-                {isFavorite ? <HeartOff /> : <HeartPlus />}
+                {isFavorite ? <HeartOff /> : <Heart />}
               </Button>
             </TooltipTrigger>
             <TooltipContent>
@@ -105,9 +108,12 @@ export const FilmViewFooter = ({
         <Button
           variant='outline'
           onClick={handleClose}
-          className='pointer-events-auto rounded-lg border-foreground backdrop-blur-lg md:w-36'
+          size='icon'
+          aria-label='Close details'
+          title='Close details'
+          className='pointer-events-auto'
         >
-          Close
+          <X />
         </Button>
       </div>
     </div>

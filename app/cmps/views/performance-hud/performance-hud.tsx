@@ -83,31 +83,31 @@ export const PerformanceHud = () => {
 
   return (
     <div
-      className='pointer-events-auto fixed right-3 bottom-12 z-40 max-w-[calc(100vw-1.5rem)] rounded-md border border-white/15 bg-black/80 px-2.5 py-2 text-white md:right-9 md:bottom-9'
+      className='cinematic-surface pointer-events-auto fixed right-3 bottom-16 z-40 max-w-[calc(100vw-1.5rem)] rounded-lg px-2 py-1.5 text-white md:right-9 md:bottom-8'
       data-perf-hud
       data-testid='performance-hud'
       onPointerDown={(event) => event.stopPropagation()}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className='flex items-center gap-2'>
-        <Activity className='h-3.5 w-3.5 text-white/70' />
+      <div className='flex items-center gap-1.5'>
+        <Activity className='h-3.5 w-3.5 text-primary' />
         <button
           type='button'
           className='flex items-baseline gap-1 text-left'
           onClick={() => setCollapsed((value) => !value)}
           aria-label={collapsed ? 'Expand FPS details' : 'Collapse FPS details'}
         >
-          <span className='font-black text-[0.65rem] text-white/45 uppercase tracking-wide'>
+          <span className='font-semibold text-[0.62rem] text-white/45 uppercase tracking-[0.1em]'>
             FPS
           </span>
-          <span className={`font-mono font-semibold text-sm ${toneClass}`}>
+          <span className={`font-mono font-semibold text-xs ${toneClass}`}>
             {metrics.avg1s.toFixed(1)}
           </span>
         </button>
         <Button
           variant='ghost'
           size='icon'
-          className='h-5 w-5 rounded-sm text-white/70 hover:text-white [&_svg]:h-3.5 [&_svg]:w-3.5'
+          className='h-6 w-6 rounded-md text-white/55 hover:text-white [&_svg]:h-3.5 [&_svg]:w-3.5'
           aria-label={pinned ? 'Unpin FPS HUD' : 'Pin FPS HUD'}
           onClick={() => setPinned((value) => !value)}
         >
@@ -116,7 +116,7 @@ export const PerformanceHud = () => {
         <Button
           variant='ghost'
           size='icon'
-          className='h-5 w-5 rounded-sm text-white/70 hover:text-white [&_svg]:h-3.5 [&_svg]:w-3.5'
+          className='h-6 w-6 rounded-md text-white/55 hover:text-white [&_svg]:h-3.5 [&_svg]:w-3.5'
           aria-label={collapsed ? 'Expand FPS details' : 'Collapse FPS details'}
           onClick={() => setCollapsed((value) => !value)}
         >

@@ -17,6 +17,7 @@ import {
   type VoroforceCells,
   easedMinLerp,
 } from '@/vf'
+import { ChevronRight } from 'lucide-react'
 import useDimensions from '../../../hooks/use-dimensions'
 import { useMediaQuery } from '../../../hooks/use-media-query'
 import { clamp, lerp } from '../../../utils/math'
@@ -319,41 +320,49 @@ export const FilmPreview = ({ poster = false }) => {
     return film ? (
       <button
         aria-label={`Open ${film.title}`}
-        className='pointer-events-auto fixed top-7 left-6 z-20 max-w-[calc(100vw-3rem)] cursor-pointer border-0 bg-transparent p-0 text-left text-white outline-none focus-visible:ring-1 focus-visible:ring-white/70 md:top-9 md:left-9 md:max-w-[34rem]'
+        className='cinematic-surface group pointer-events-auto fixed top-4 left-4 z-20 w-[min(25rem,calc(100vw-2rem))] cursor-pointer rounded-lg p-3 text-left text-white outline-none transition-[border-color,background-color,transform] hover:border-white/24 hover:bg-black/88 focus-visible:ring-2 focus-visible:ring-primary/70 md:top-8 md:left-9 md:p-3.5'
         onClick={handleTitleCardClick}
         type='button'
       >
-        <div className='flex max-w-full items-start gap-4 md:gap-4'>
+        <div className='flex max-w-full items-stretch gap-3.5'>
           <FilmPoster
             film={film}
-            className='h-[7.5rem] w-20 shrink-0 rounded-sm object-cover shadow-black/40 shadow-lg md:h-32 md:w-[5.35rem]'
+            className='h-[7.5rem] w-20 shrink-0 rounded-md border border-white/12 object-cover shadow-black/40 shadow-lg'
           />
-          <div className='min-w-0 flex-1'>
-            <div className='line-clamp-2 break-words font-black text-2xl leading-none drop-shadow-[0_2px_10px_rgba(0,0,0,0.85)] md:text-2xl'>
-              {film.title}
-              {film.year ? (
-                <span className='font-medium text-white/55'>
-                  &nbsp;({film.year})
-                </span>
-              ) : null}
+          <div className='flex min-w-0 flex-1 flex-col'>
+            <div className='flex items-start justify-between gap-3'>
+              <div className='min-w-0'>
+                <div className='line-clamp-2 break-words font-semibold text-xl leading-tight'>
+                  {film.title}
+                </div>
+                {film.year ? (
+                  <div className='mt-0.5 text-white/52 text-xs'>
+                    {film.year}
+                  </div>
+                ) : null}
+              </div>
+              <div className='shrink-0'>
+                <FilmRatingGauge value={film.rating} />
+              </div>
             </div>
             {film.tagline ? (
-              <div className='mt-1 line-clamp-2 text-lg text-white/75 italic leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.9)] md:line-clamp-1 md:text-sm'>
+              <div className='mt-2 line-clamp-1 text-sm text-white/65 leading-tight'>
                 {film.tagline}
               </div>
             ) : null}
-            <div className='mt-2 flex min-w-0 flex-wrap items-center gap-2'>
+            <div className='mt-2.5 flex min-w-0 flex-wrap items-center gap-1.5'>
               {film.genres?.slice(0, 3).map((genre) => (
                 <Badge
                   key={genre}
-                  className='max-w-full cursor-pointer truncate px-4 py-2 text-sm leading-none md:px-2.5 md:py-0.5 md:text-[0.6rem]'
+                  className='max-w-full cursor-pointer truncate text-[0.62rem]'
                 >
                   {genre}
                 </Badge>
               ))}
-              <div className='ml-auto hidden md:block'>
-                <FilmRatingGauge value={film.rating} />
-              </div>
+            </div>
+            <div className='mt-auto flex items-center justify-between border-white/10 border-t pt-2.5 text-white/58 text-xs'>
+              <span>Open details</span>
+              <ChevronRight className='size-3.5 transition-transform group-hover:translate-x-0.5' />
             </div>
           </div>
         </div>
@@ -370,7 +379,7 @@ export const FilmPreview = ({ poster = false }) => {
         <div className='pointer-events-none fixed inset-x-4 bottom-16 z-20 flex justify-center md:top-9 md:bottom-auto md:justify-start'>
           <button
             aria-label={`Open ${film.title}`}
-            className='pointer-events-auto max-w-full cursor-pointer rounded-md border border-white/10 bg-black/62 px-4 py-3 text-left text-white shadow-2xl shadow-black/40 outline-none backdrop-blur-md focus-visible:ring-1 focus-visible:ring-white/70 md:px-3 md:py-2'
+            className='cinematic-surface pointer-events-auto max-w-full cursor-pointer rounded-lg px-4 py-3 text-left text-white outline-none focus-visible:ring-2 focus-visible:ring-primary/70'
             onClick={handleTitleCardClick}
             type='button'
           >

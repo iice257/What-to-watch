@@ -42,10 +42,7 @@ export const CustomLinks = ({
           asChild
           key={baseUrl}
           variant='outline'
-          className={cn(
-            'rounded-lg border-foreground md:backdrop-blur-lg',
-            buttonClassName,
-          )}
+          className={cn('rounded-md', buttonClassName)}
         >
           <div className='group relative'>
             <a

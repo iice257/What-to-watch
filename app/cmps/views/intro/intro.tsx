@@ -22,7 +22,7 @@ export const Intro = () => {
   return (
     <FadeTransition
       className={cn(
-        'fixed inset-x-0 top-0 z-60 flex h-dvh w-full justify-center bg-background px-12 duration-700',
+        'fixed inset-x-0 top-0 z-60 flex h-dvh w-full justify-center overflow-hidden bg-background px-5 duration-700 md:px-12',
         {
           '!duration-0': visible,
         },
@@ -33,7 +33,8 @@ export const Intro = () => {
         timeout: visible ? 0 : 700,
       }}
     >
-      <div className='flex h-full flex-col items-stretch'>
+      <div className='relative flex h-full w-full max-w-xl flex-col items-stretch'>
+        <div className='pointer-events-none absolute inset-x-0 top-0 mx-auto h-px w-2/3 bg-gradient-to-r from-transparent via-primary/60 to-transparent' />
         <div
           className={cn('h-1/3', {
             'max-lg:landscape:hidden [@media(min-aspect-ratio:2.5)]:hidden':
@@ -46,17 +47,19 @@ export const Intro = () => {
               !initialPreset,
           })}
         >
-          <h1 className='font-black text-4xl leading-none md:text-5xl md:leading-none'>
-            <span className='inline-flex'>
-              <span className='max-md:hidden'>"</span>
-              <i>What</i>
-            </span>{' '}
-            <span className='relative inline-flex'>
-              <i>to Watch</i>
-              <span className='max-md:hidden'>"</span>
-              <span className='absolute bottom-0 left-full after:animate-ellipsis' />
-            </span>
-          </h1>
+          <div className='text-center'>
+            <div className='panel-kicker mb-4'>Interactive film discovery</div>
+            <h1 className='font-semibold text-4xl leading-none tracking-normal md:text-5xl md:leading-none'>
+              <span className='inline-flex'>What</span>{' '}
+              <span className='relative inline-flex'>
+                to Watch
+                <span className='absolute bottom-0 left-full after:animate-ellipsis' />
+              </span>
+            </h1>
+            <p className='mx-auto mt-4 max-w-md text-muted-foreground text-sm leading-relaxed'>
+              Explore thousands of films through one continuous visual canvas.
+            </p>
+          </div>
         </div>
         <div
           className={cn(
@@ -69,7 +72,7 @@ export const Intro = () => {
         >
           <FadeTransition
             visible={!hasDeviceClass}
-            className='absolute inset-x-0 bottom-12 w-full duration-300 max-md:hidden max-lg:landscape:bottom-6'
+            className='cinematic-surface absolute inset-x-0 bottom-8 w-full rounded-lg p-5 duration-300 max-md:hidden max-lg:landscape:bottom-6'
             transitionOptions={{
               timeout: 250,
             }}
@@ -79,7 +82,7 @@ export const Intro = () => {
           </FadeTransition>
           <FadeTransition
             visible={hasDeviceClass && !preset}
-            className='absolute inset-x-0 bottom-12 w-full duration-300 max-lg:landscape:bottom-6'
+            className='cinematic-surface absolute inset-x-0 bottom-8 w-full rounded-lg p-5 duration-300 max-lg:landscape:bottom-6'
             transitionOptions={{
               timeout: 250,
             }}
@@ -98,7 +101,7 @@ export const Intro = () => {
 }
 
 const MoviesDatasetLicenseInfo = () => (
-  <span className='inline-flex text-xxs text-zinc-600 leading-none dark:text-zinc-300'>
+  <span className='mt-4 inline-flex text-[0.58rem] text-muted-foreground leading-relaxed'>
     Contains information from Kaggle's "Full TMDB Movies Dataset" which is made
     available under the ODC Attribution License.
   </span>

@@ -15,6 +15,7 @@ import {
 } from '../../../../../vf'
 import { AnimateDimensionsChange } from '../../../../common/animate-dimensions-change'
 import { Badge } from '../../../../ui/badge'
+import { FilmPoster } from '../../shared/film-poster'
 import { FilmRatingGauge } from '../../shared/film-rating-gauge'
 
 const discoveryTagLabels: Record<DiscoveryTag, string> = {
@@ -124,24 +125,23 @@ export const FilmView = ({
       >
         <div
           className={cn(
-            'absolute inset-0 h-full min-h-dvh w-full overflow-hidden transition-colors duration-700',
+            'absolute inset-0 h-full min-h-dvh w-full overflow-hidden bg-background transition-colors duration-700',
             {
               '!bg-background': viewHovered && !isSmallScreen,
-              'bg-black/20': isSmallScreen,
-              'bg-background/70':
+              'bg-background/78':
                 !isSmallScreen && (isIOS || backdropErrored || backdropHidden),
             },
           )}
         >
           {isSmallScreen && film.poster && (
             <img
-              className='absolute inset-0 h-full min-h-dvh w-full scale-110 object-cover object-center opacity-60 blur-xl saturate-125 transition-opacity duration-700'
+              className='absolute inset-0 h-full min-h-dvh w-full scale-110 object-cover object-center opacity-42 blur-2xl saturate-110 transition-opacity duration-700'
               alt=''
               src={`${config.posterBaseUrl}${film.poster}`}
             />
           )}
           {isSmallScreen && film.poster && (
-            <div className='absolute inset-0 bg-gradient-to-b from-black/15 via-black/35 to-black/68' />
+            <div className='absolute inset-0 bg-gradient-to-b from-black/15 via-black/58 to-black/92' />
           )}
           {!isIOS && !isSmallScreen && (
             <img
@@ -149,7 +149,7 @@ export const FilmView = ({
                 'h-full w-full object-cover object-center opacity-0 transition-opacity duration-500 will-change-[opacity]',
                 {
                   '!w-0 !h-0': backdropErrored,
-                  '!opacity-60 dark:!opacity-60': !backdropHidden,
+                  '!opacity-32 dark:!opacity-32': !backdropHidden,
                 },
               )}
               alt=''
@@ -168,22 +168,36 @@ export const FilmView = ({
         <div className='relative z-1 flex h-full w-full flex-col'>
           <div
             className={cn(
-              'w-full group-hover:h-auto group-hover:min-h-64 md:h-48 md:not-landscape:h-48 group-hover:md:not-landscape:min-h-48 lg:h-64 max-md:landscape:h-full group-hover:lg:landscape:min-h-64 group-hover:md:landscape:min-h-48',
-              'max-md:not-landscape:min-h-[45dvh] max-md:not-landscape:pt-[12dvh]',
+              'w-full group-hover:h-auto group-hover:min-h-64 md:h-56 md:not-landscape:h-56 group-hover:md:not-landscape:min-h-56 lg:h-64 max-md:landscape:h-full group-hover:lg:landscape:min-h-64 group-hover:md:landscape:min-h-56',
+              'max-md:not-landscape:min-h-[38dvh] max-md:not-landscape:pt-[5dvh]',
             )}
           >
-            <div className='flex h-full w-full flex-row gap-6 p-4 md:p-6 lg:p-6 xl:p-9'>
+            <div className='flex h-full w-full flex-row items-end gap-4 p-4 md:items-start md:gap-5 md:p-6'>
+              <FilmPoster
+                film={film}
+                className='h-36 w-24 shrink-0 rounded-lg border border-white/14 object-cover shadow-2xl shadow-black/60 md:h-44 md:w-[7.4rem]'
+              />
               <div className='flex w-full flex-col justify-between gap-9'>
                 <div className='flex w-full flex-col gap-3'>
                   <div className='relative flex w-full flex-row items-start justify-between gap-3 pr-16 md:pr-28'>
-                    <h3 className='break-words font-black text-3xl leading-none md:text-3xl lg:text-4xl xl:text-5xl'>
-                      {film.title}
-                      {film.year && (
-                        <span className='font-medium text-foreground/50'>
-                          &nbsp;({film.year})
-                        </span>
-                      )}
-                    </h3>
+                    <div>
+                      <div className='panel-kicker mb-2'>Now focused</div>
+                      <h3 className='break-words font-semibold text-3xl leading-[0.96] md:text-4xl'>
+                        {film.title}
+                      </h3>
+                      <div className='mt-2 flex items-center gap-2 text-foreground/55 text-sm'>
+                        {film.year ? <span>{film.year}</span> : null}
+                        {film.runtime ? (
+                          <>
+                            <span>•</span>
+                            <span>
+                              {Math.floor(film.runtime / 60)}h{' '}
+                              {film.runtime % 60}m
+                            </span>
+                          </>
+                        ) : null}
+                      </div>
+                    </div>
                     <div className='absolute top-0 right-0 flex flex-row-reverse items-center gap-3'>
                       <FilmRatingGauge value={film.rating} />
                       <div className='hidden text-xxs leading-none md:not-landscape:block lg:hidden xl:block'>
@@ -193,15 +207,12 @@ export const FilmView = ({
                     </div>
                   </div>
                   <div className='flex flex-col gap-3'>
-                    <p className='line-clamp-2 text-foreground/80 text-lg italic leading-none md:line-clamp-1 lg:text-xl'>
+                    <p className='line-clamp-2 text-foreground/70 text-sm italic leading-snug md:line-clamp-1 md:text-base'>
                       {film.tagline}
                     </p>
-                    <div className='flex flex-row flex-wrap gap-3 pt-2'>
+                    <div className='flex flex-row flex-wrap gap-2 pt-1'>
                       {film.genres?.map((genre) => (
-                        <Badge
-                          className='whitespace-nowrap px-4 py-2 text-sm leading-none md:px-2.5 md:py-0.5 md:text-xs'
-                          key={genre}
-                        >
+                        <Badge className='whitespace-nowrap' key={genre}>
                           {genre}
                         </Badge>
                       ))}
@@ -212,7 +223,7 @@ export const FilmView = ({
                           <Badge
                             key={tag}
                             variant='outline'
-                            className='border-foreground/25 bg-background/30 px-4 py-2 text-foreground/75 text-sm leading-none backdrop-blur-sm md:px-2.5 md:py-0.5 md:text-xs'
+                            className='text-foreground/70'
                           >
                             {discoveryTagLabels[tag]}
                           </Badge>
@@ -224,34 +235,38 @@ export const FilmView = ({
               </div>
             </div>
           </div>
-          <div className='full mb-15 px-4 pb-36 md:px-6 md:pb-6 lg:px-6 lg:pb-6 xl:px-9 xl:pb-9'>
-            <div className='flex flex-col justify-end text-base leading-tight max-md:text-base max-lg:h-[calc(4em*1.25)] group-hover:md:h-auto group-hover:md:min-h-[calc(4em*1.25)] lg:h-[calc(4em*1.25)] lg:text-xl group-hover:lg:h-auto'>
+          <div className='full mb-15 px-4 pb-36 md:px-6 md:pb-24'>
+            <div className='border-white/10 border-t pt-5'>
+              <h4 className='panel-kicker mb-2'>Overview</h4>
               <p className='max-lg:line-clamp-4 group-hover:max-lg:line-clamp-none group-hover:md:max-lg:line-clamp-4 lg:line-clamp-4 group-hover:lg:line-clamp-none'>
                 {film.overview}
               </p>
             </div>
             {similarFilms.length > 0 && (
-              <div className='mt-4 flex flex-col gap-2 text-xs md:text-sm'>
-                <h4 className='font-semibold text-foreground/70 uppercase leading-none tracking-normal'>
-                  Movies like this
-                </h4>
-                <div className='flex flex-wrap gap-2'>
+              <div className='mt-6 border-white/10 border-t pt-5 text-xs md:text-sm'>
+                <h4 className='panel-kicker mb-3'>Similar films</h4>
+                <div className='grid grid-cols-1 gap-2'>
                   {visibleSimilarFilms.map(({ film: similarFilm, reasons }) => (
                     <button
                       type='button'
                       key={similarFilm.tmdbId}
-                      className='max-w-full cursor-pointer rounded-md border border-foreground/20 bg-background/20 px-3 py-2.5 text-left text-base text-foreground/80 leading-tight backdrop-blur-sm transition-colors hover:bg-background/45 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:px-2 md:py-1.5 md:text-sm'
+                      className='flex max-w-full cursor-pointer items-center gap-3 rounded-lg border border-white/10 bg-white/[0.035] p-2 text-left text-foreground/80 transition-colors hover:border-white/20 hover:bg-white/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60'
                       onClick={() => navigateToSimilarFilm(similarFilm)}
                     >
-                      <div className='truncate font-medium'>
-                        {similarFilm.title}
-                        {similarFilm.year ? ` (${similarFilm.year})` : ''}
-                      </div>
-                      {reasons.length > 0 && (
-                        <div className='mt-0.5 truncate text-foreground/55 text-xxs'>
-                          {reasons.join(' / ')}
+                      <FilmPoster
+                        film={similarFilm}
+                        className='h-14 w-10 shrink-0 rounded object-cover'
+                      />
+                      <div className='min-w-0'>
+                        <div className='truncate font-medium'>
+                          {similarFilm.title}
                         </div>
-                      )}
+                        <div className='mt-0.5 truncate text-foreground/50 text-xs'>
+                          {[similarFilm.year, ...reasons]
+                            .filter(Boolean)
+                            .join(' • ')}
+                        </div>
+                      </div>
                     </button>
                   ))}
                 </div>

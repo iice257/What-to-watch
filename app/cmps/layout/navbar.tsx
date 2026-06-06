@@ -33,15 +33,17 @@ export const Navbar = () => {
   }))
 
   const buttonClassnames =
-    '!size-6 [&_svg]:!size-4 lg:!size-8 lg:[&_svg]:!size-5 pointer-events-auto rounded-full cursor-pointer'
+    'pointer-events-auto !size-9 cursor-pointer rounded-md text-white/72 hover:bg-white/10 hover:text-white [&_svg]:!size-4'
 
   return (
-    <div className='pointer-events-none fixed inset-x-0 bottom-0 z-10 flex w-full flex-row items-center justify-end gap-1 p-3 md:top-0 md:bottom-auto md:z-60 md:px-9 md:py-9'>
-      <div className='flex flex-row gap-1'>
+    <div className='pointer-events-none fixed inset-x-0 bottom-0 z-20 flex w-full items-center justify-center p-3 md:top-0 md:bottom-auto md:z-60 md:justify-end md:px-9 md:py-8'>
+      <div className='cinematic-surface pointer-events-auto flex flex-row items-center gap-0.5 rounded-lg p-1 text-white'>
         {uiVisible && (
           <Button
             variant='ghost'
             size='icon'
+            aria-label='Open filters and settings'
+            title='Filters and settings'
             onClick={toggleSettingsOpen}
             onPointerDown={(event) => {
               if (settingsOpen) {
@@ -50,7 +52,7 @@ export const Navbar = () => {
               }
             }}
             className={cn(buttonClassnames, {
-              'border border-foreground': settingsOpen,
+              'bg-white/14 text-white': settingsOpen,
             })}
           >
             <Settings />
@@ -60,6 +62,8 @@ export const Navbar = () => {
           <Button
             variant='ghost'
             size='icon'
+            aria-label='Open favorites'
+            title='Favorites'
             onClick={toggleFavoritesOpen}
             onPointerDown={(event) => {
               if (favoritesOpen) {
@@ -68,7 +72,7 @@ export const Navbar = () => {
               }
             }}
             className={cn(buttonClassnames, {
-              'border border-foreground': favoritesOpen,
+              'bg-white/14 text-white': favoritesOpen,
             })}
           >
             <Heart />
@@ -84,44 +88,42 @@ export const Navbar = () => {
             event.stopPropagation()
           }}
           className={cn(buttonClassnames, {
-            'border border-foreground': !uiVisible,
+            'bg-white/14 text-white': !uiVisible,
           })}
         >
           {uiVisible ? <EyeOff /> : <Eye />}
         </Button>
-      </div>
-
-      {uiVisible && (
-        <>
-          <ThemeToggle
-            className={cn(buttonClassnames, 'hidden md:inline-flex', {
-              'md:hidden': !canChangeTheme,
-            })}
-            onPointerDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
-          />
-          <Button
-            variant='ghost'
-            size='icon'
-            onClick={toggleSettingsOpen}
-            onPointerDown={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-            }}
-            className={cn(buttonClassnames, 'hidden md:inline-flex')}
-          >
-            <a
-              href={config.sourceCodeUrl}
-              target='_blank'
-              rel='noreferrer noopener noreferer'
+        {uiVisible && (
+          <>
+            <div className='mx-1 h-5 w-px bg-white/12' />
+            <ThemeToggle
+              className={cn(buttonClassnames, 'hidden md:inline-flex', {
+                'md:hidden': !canChangeTheme,
+              })}
+              onPointerDown={(event) => {
+                event.preventDefault()
+                event.stopPropagation()
+              }}
+            />
+            <Button
+              variant='ghost'
+              size='icon'
+              aria-label='Open source code'
+              title='Source code'
+              className={cn(buttonClassnames, 'hidden md:inline-flex')}
+              asChild
             >
-              <GithubIcon />
-            </a>
-          </Button>
-        </>
-      )}
+              <a
+                href={config.sourceCodeUrl}
+                target='_blank'
+                rel='noreferrer noopener noreferer'
+              >
+                <GithubIcon />
+              </a>
+            </Button>
+          </>
+        )}
+      </div>
     </div>
   )
 }

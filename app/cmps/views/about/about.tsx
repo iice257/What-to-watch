@@ -251,7 +251,7 @@ export const About = () => {
         <div className='flex h-18 w-full bg-gradient-to-t from-0% from-transparent via-60% via-background to-100% to-background max-md:hidden' />
       }
       footer={
-        <div className='flex w-full flex-row justify-between gap-3 bg-gradient-to-b from-0% from-transparent via-60% via-background to-100% to-background p-6 pt-24 md:gap-6'>
+        <div className='cinematic-surface flex w-full flex-row justify-between gap-3 rounded-none border-x-0 border-b-0 p-4 md:px-6'>
           <Button variant='outline' onClick={() => setOpen(false)}>
             Close
           </Button>
@@ -259,24 +259,24 @@ export const About = () => {
       }
     >
       <ScrollArea
-        className='not-landscape:w-full not-landscape:rounded-t-3xl bg-background/60 lg:w-full lg:rounded-3xl landscape:h-full landscape:rounded-l-3xl'
+        className='not-landscape:w-full lg:w-full landscape:h-full'
         innerClassName='max-h-[calc(100vh-var(--spacing)*6*2)]'
       >
         <Accordion
           type='multiple'
-          className='w-full p-6 pb-18 md:pr-10 lg:pt-12 lg:pb-24'
+          className='w-full p-4 pb-24 md:p-6 md:pb-24'
           defaultValue={['1', '2', '3']}
         >
           {items.map(({ title, content, className }, index) => (
             <AccordionItem
               key={title}
               value={`${index}`}
-              className={cn('w-full cursor-auto', className)}
+              className={cn('w-full cursor-auto border-white/10', className)}
             >
-              <AccordionTrigger className='w-full cursor-pointer font-bold text-lg uppercase leading-none underline-offset-3 [&>svg]:size-6'>
+              <AccordionTrigger className='w-full cursor-pointer py-5 font-semibold text-base leading-none underline-offset-3 [&>svg]:size-5'>
                 {title}
               </AccordionTrigger>
-              <AccordionContent className='text-base'>
+              <AccordionContent className='text-foreground/72 text-sm leading-relaxed'>
                 {content}
               </AccordionContent>
             </AccordionItem>

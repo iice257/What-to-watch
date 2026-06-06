@@ -30,7 +30,7 @@ const ModalHandle = ({
 }) => (
   <div
     className={cn(
-      'not-landscape:-translate-x-1/2 landscape:-translate-y-1/2 absolute not-landscape:top-0 not-landscape:left-1/2 not-landscape:h-2.5 not-landscape:w-[100px] not-landscape:translate-y-1/2 cursor-grab rounded-full bg-background/80 max-md:h-1.5 max-md:translate-y-[150%] max-md:bg-background max-lg:border landscape:top-1/2 landscape:left-0 landscape:h-[100px] landscape:w-2.5',
+      'not-landscape:-translate-x-1/2 landscape:-translate-y-1/2 absolute not-landscape:top-1 not-landscape:left-1/2 not-landscape:h-1 not-landscape:w-12 not-landscape:translate-y-1/2 cursor-grab rounded-full bg-white/35 max-md:translate-y-[150%] landscape:top-1/2 landscape:left-1 landscape:h-12 landscape:w-1',
       {
         'not-landscape:-translate-x-1/2 landscape:right-0 landscape:left-auto':
           direction === 'left',
@@ -52,7 +52,7 @@ const ModalContent = React.forwardRef<
   <DrawerPrimitive.Content
     ref={ref}
     className={cn(
-      'not-landscape:-inset-x-px pointer-events-none fixed not-landscape:bottom-0 z-30 not-landscape:h-auto p-1.5 focus-visible:outline-none not-landscape:md:inset-x-0 md:px-3 md:py-3 lg:px-6 lg:py-6 landscape:top-0 landscape:right-0 landscape:h-full landscape:min-w-100 landscape:max-w-210 landscape:lg:h-auto landscape:lg:max-h-full landscape:lg:w-2/5 landscape:lg:min-w-130 landscape:md:min-w-120',
+      'not-landscape:-inset-x-px pointer-events-none fixed not-landscape:bottom-0 z-30 not-landscape:h-auto p-1.5 focus-visible:outline-none not-landscape:md:inset-x-0 md:px-3 md:py-3 lg:px-5 lg:py-5 landscape:top-0 landscape:right-0 landscape:h-full landscape:min-w-100 landscape:max-w-210 landscape:lg:h-auto landscape:lg:max-h-full landscape:lg:w-[min(31rem,42vw)] landscape:lg:min-w-120 landscape:md:min-w-112',
       {
         'landscape:right-auto landscape:left-0': direction === 'left',
         'not-landscape:top-0 not-landscape:bottom-auto': direction === 'top',
@@ -74,7 +74,7 @@ const ModalContentInner = ({
 }>) => (
   <div
     className={cn(
-      'pointer-events-auto relative not-landscape:w-full cursor-grab overflow-hidden rounded-2xl bg-background/70 transition-colors duration-500 max-lg:border md:rounded-xl landscape:h-full landscape:lg:h-full landscape:lg:max-h-[calc(100vh-var(--spacing)*6*2)]',
+      'cinematic-surface pointer-events-auto relative not-landscape:w-full cursor-grab overflow-hidden rounded-xl transition-colors duration-500 landscape:h-full landscape:lg:h-full landscape:lg:max-h-[calc(100vh-var(--spacing)*5*2)]',
       className,
     )}
   >

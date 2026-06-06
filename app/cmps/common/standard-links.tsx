@@ -19,10 +19,7 @@ export const StdLinks = ({
       <Button
         asChild
         variant='outline'
-        className={cn(
-          'rounded-lg border-foreground md:backdrop-blur-lg',
-          buttonClassName,
-        )}
+        className={cn('rounded-md', buttonClassName)}
       >
         <a
           href={`${config.tmdbFilmBaseUrl}${film.tmdbId}`}
@@ -36,10 +33,7 @@ export const StdLinks = ({
         <Button
           asChild
           variant='outline'
-          className={cn(
-            'rounded-lg border-foreground md:backdrop-blur-lg',
-            buttonClassName,
-          )}
+          className={cn('rounded-md', buttonClassName)}
         >
           <a
             href={`${config.imdbFilmBaseUrl}${film.imdbId}`}

@@ -141,7 +141,7 @@ export const FilmViewDrawer = () => {
           onMouseLeave: () => setFreezeFilm(false),
         }),
         className: cn(
-          'group max-md:not-landscape:inset-0 max-md:not-landscape:h-dvh max-md:not-landscape:p-0 landscape:max-h-[18rem] landscape:w-2/5 md:landscape:max-h-[24rem]',
+          'group max-md:not-landscape:inset-0 max-md:not-landscape:h-dvh max-md:not-landscape:p-0 landscape:w-2/5',
           {
             'contain-layout contain-paint contain-style':
               !addCustomLinkTypeOpen,
@@ -151,7 +151,7 @@ export const FilmViewDrawer = () => {
       }}
       innerContentProps={{
         className:
-          'relative z-40 max-md:not-landscape:h-full max-md:not-landscape:rounded-none max-md:not-landscape:border-0 max-md:not-landscape:bg-transparent',
+          'relative z-40 max-md:not-landscape:h-full max-md:not-landscape:rounded-none max-md:not-landscape:border-0',
       }}
       footer={
         mountContent ? (
@@ -164,8 +164,7 @@ export const FilmViewDrawer = () => {
         ) : null
       }
       handleProps={{
-        className:
-          'max-md:bg-white/70 max-md:h-1.5 max-md:translate-y-3 lg:bg-transparent lg:backdrop-blur-lg',
+        className: 'max-md:bg-white/45 max-md:translate-y-3',
       }}
       handle={!isSmallScreen || isLandscape}
       additional={mountContent ? <AddCustomLinkModal /> : null}
