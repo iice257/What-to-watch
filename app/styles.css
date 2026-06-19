@@ -165,6 +165,11 @@
     pointer-events: auto;
   }
 
+  body[data-route="test-gallery"] #voroforce {
+    display: none !important;
+    pointer-events: none !important;
+  }
+
   /* IMPORTANT TAKE NOTE! font scaling */
   /* biome-ignore lint/correctness/noUnknownFunction: exists */
   @media (min-width: theme(--breakpoint-lg)) {
@@ -256,5 +261,96 @@
     background:
       linear-gradient(to right, rgb(20 18 16 / 0.16), transparent 12%, transparent 88%, rgb(20 18 16 / 0.16)),
       linear-gradient(to bottom, rgb(20 18 16 / 0.12), transparent 16%, transparent 84%, rgb(20 18 16 / 0.12));
+  }
+
+  .phantom-test-shell {
+    isolation: isolate;
+  }
+
+  .phantom-test-shell::before,
+  .phantom-test-shell::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+  }
+
+  .phantom-test-shell::before {
+    z-index: 1;
+    background:
+      linear-gradient(to bottom, rgb(255 255 255 / 0.07), transparent 18%),
+      radial-gradient(circle at 24% 18%, rgb(255 255 255 / 0.12), transparent 21rem),
+      radial-gradient(circle at 70% 72%, rgb(255 255 255 / 0.08), transparent 24rem);
+    mix-blend-mode: soft-light;
+  }
+
+  .phantom-test-shell::after {
+    z-index: 2;
+    opacity: 0.055;
+    background-image: url("/assets/noise.png");
+    background-size: 180px 180px;
+  }
+
+  .phantom-index-scroll {
+    scrollbar-width: none;
+  }
+
+  .phantom-index-scroll::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
+
+  .phantom-index-row {
+    grid-template-columns: minmax(0, 1fr) minmax(12rem, 0.45fr) 7.5rem;
+  }
+
+  .phantom-index-row:hover,
+  .phantom-index-row:focus-visible {
+    outline: none;
+    transform: translateX(0.35rem);
+  }
+
+  .phantom-gallery-card {
+    transform-origin: center bottom;
+  }
+
+  .phantom-floating-poster {
+    transform: perspective(1200px) rotateY(-9deg) rotateZ(var(--poster-tilt));
+  }
+
+  .phantom-pill {
+    border: 1px solid rgb(255 255 255 / 0.14);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.045);
+    padding: 0.62rem 0.92rem;
+    font-size: 0.68rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    line-height: 1;
+    text-transform: uppercase;
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    transition:
+      color 180ms ease,
+      background 180ms ease,
+      border-color 180ms ease,
+      transform 180ms ease;
+  }
+
+  .phantom-pill:hover,
+  .phantom-pill:focus-visible {
+    border-color: rgb(255 255 255 / 0.34);
+    outline: none;
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 767px) {
+    .phantom-index-row {
+      grid-template-columns: minmax(0, 1fr) 5.5rem;
+    }
+
+    .phantom-index-row > span:nth-child(2) {
+      display: none;
+    }
   }
 }
