@@ -15,13 +15,17 @@ initTelemetry()
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search)
   const disableUIOverrideParam = urlParams.get('disableUI')
-  const isTestGalleryRoute = window.location.pathname === '/test'
+  const isDiscoveryRoute =
+    window.location.pathname === '/' || window.location.pathname === '/test'
 
-  if (isTestGalleryRoute) {
-    // Keep the Phantom-style prototype isolated from the Voroforce renderer.
+  if (isDiscoveryRoute) {
+    // Keep the discovery experience isolated from the Voroforce renderer.
     document.body.dataset.route = 'test-gallery'
     document.getElementById('voroforce')?.setAttribute('aria-hidden', 'true')
-    createRoot(document.getElementById('root')!).render(
+    const rootElement = document.getElementById('root')
+    if (!rootElement) return
+
+    createRoot(rootElement).render(
       <StrictMode>
         <ErrorBoundary>
           <TestGalleryApp />

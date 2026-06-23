@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { type WheelEvent, useEffect, useRef, useState } from 'react'
 import { cn } from '../../../utils/tw'
 
 export type InfiniteMovieMenuItem<T> = {
@@ -26,10 +26,9 @@ type Mat4 = Float32Array
 
 const SPHERE_RADIUS = 2.35
 const TARGET_FRAME_DURATION = 1000 / 60
-const CARD_ASPECT = 0.68
-const TEXTURE_CELL_SIZE = 256
-const CONTACT_COLUMNS = 12
-const CONTACT_ROWS = 13
+const ICON_TEXTURE_CELL_SIZE = 256
+const ICON_INSTANCE_COUNT = 360
+const ICON_SEGMENTS = 40
 
 const vertexShaderSource = `#version 300 es
 uniform mat4 uWorldMatrix;
@@ -85,10 +84,9 @@ in vec2 vUvs;
 in float vAlpha;
 flat in int vInstanceId;
 
-float roundedRectMask(vec2 uv, float radius) {
-  vec2 q = abs(uv - 0.5) - vec2(0.5 - radius);
-  float dist = length(max(q, 0.0)) - radius;
-  return 1.0 - smoothstep(0.0, 0.015, dist);
+float circleMask(vec2 uv) {
+  float dist = distance(uv, vec2(0.5));
+  return 1.0 - smoothstep(0.482, 0.5, dist);
 }
 
 void main() {
@@ -98,14 +96,13 @@ void main() {
   vec2 cellSize = vec2(1.0) / vec2(float(uAtlasSize));
   vec2 cellOffset = vec2(float(cellX), float(cellY)) * cellSize;
 
-  float xPad = (1.0 - ${CARD_ASPECT.toFixed(2)}) * 0.5;
-  vec2 st = vec2(mix(xPad, 1.0 - xPad, vUvs.x), 1.0 - vUvs.y);
+  vec2 st = vec2(vUvs.x, 1.0 - vUvs.y);
   st = st * cellSize + cellOffset;
 
   vec4 color = texture(uTex, st);
-  float mask = roundedRectMask(vUvs, 0.075);
+  float mask = circleMask(vUvs);
   outColor = color;
-  outColor.rgb *= mix(0.64, 1.08, vAlpha);
+  outColor.rgb *= mix(0.58, 1.12, vAlpha);
   outColor.a *= mask * vAlpha;
   if (outColor.a < 0.02) discard;
 }
@@ -305,7 +302,11 @@ const normalize3 = ([x, y, z]: Vec3): Vec3 => {
   const len = Math.hypot(x, y, z)
   return len > 0.000001 ? [x / len, y / len, z / len] : [0, 0, 0]
 }
-const subtract3 = (a: Vec3, b: Vec3): Vec3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]]
+const subtract3 = (a: Vec3, b: Vec3): Vec3 => [
+  a[0] - b[0],
+  a[1] - b[1],
+  a[2] - b[2],
+]
 const negate3 = ([x, y, z]: Vec3): Vec3 => [-x, -y, -z]
 const dot3 = (a: Vec3, b: Vec3) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
 const cross3 = (a: Vec3, b: Vec3): Vec3 => [
@@ -391,46 +392,53 @@ const transformQuat3 = ([x, y, z]: Vec3, q: Quat): Vec3 => {
   ]
 }
 
-const createSphericalContactSheetPositions = (
-  columns = CONTACT_COLUMNS,
-  rows = CONTACT_ROWS,
-) => {
+const createFibonacciSpherePositions = (count = ICON_INSTANCE_COUNT) => {
   const positions: Vec3[] = []
-  const thetaSpan = Math.PI * 0.66
-  const centerTheta = Math.PI
-  for (let row = 0; row < rows; row += 1) {
-    const rowProgress = rows === 1 ? 0.5 : row / (rows - 1)
-    const phi = (0.16 + rowProgress * 0.68) * Math.PI
-    const rowOffset = row % 2 === 0 ? -0.008 : 0.008
-    for (let column = 0; column < columns; column += 1) {
-      const columnProgress = columns === 1 ? 0.5 : column / (columns - 1)
-      const theta = centerTheta - thetaSpan / 2 + columnProgress * thetaSpan + rowOffset
-      positions.push([
-        SPHERE_RADIUS * Math.sin(phi) * Math.sin(theta),
-        SPHERE_RADIUS * Math.cos(phi),
-        SPHERE_RADIUS * Math.sin(phi) * Math.cos(theta),
-      ])
-    }
+  const goldenAngle = Math.PI * (3 - Math.sqrt(5))
+
+  for (let index = 0; index < count; index += 1) {
+    const y = 1 - (index / Math.max(1, count - 1)) * 2
+    const ringRadius = Math.sqrt(Math.max(0, 1 - y * y))
+    const theta = index * goldenAngle
+    positions.push([
+      SPHERE_RADIUS * Math.cos(theta) * ringRadius,
+      SPHERE_RADIUS * y,
+      SPHERE_RADIUS * Math.sin(theta) * ringRadius,
+    ])
   }
+
   return positions
 }
 
-const createCardGeometry = () => {
-  const halfHeight = 0.5
-  const halfWidth = halfHeight * CARD_ASPECT
+const createDiscGeometry = (segments = ICON_SEGMENTS) => {
+  const vertices = [0, 0, 0]
+  const uvs = [0.5, 0.5]
+  const indices: number[] = []
+
+  for (let index = 0; index <= segments; index += 1) {
+    const angle = (index / segments) * Math.PI * 2
+    const x = Math.cos(angle) * 0.5
+    const y = Math.sin(angle) * 0.5
+    vertices.push(x, y, 0)
+    uvs.push(x + 0.5, y + 0.5)
+
+    if (index > 0) {
+      indices.push(0, index, index + 1)
+    }
+  }
+
   return {
-    vertices: new Float32Array([
-      -halfWidth, -halfHeight, 0,
-      halfWidth, -halfHeight, 0,
-      halfWidth, halfHeight, 0,
-      -halfWidth, halfHeight, 0,
-    ]),
-    uvs: new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]),
-    indices: new Uint16Array([0, 1, 2, 0, 2, 3]),
+    vertices: new Float32Array(vertices),
+    uvs: new Float32Array(uvs),
+    indices: new Uint16Array(indices),
   }
 }
 
-const createShader = (gl: WebGL2RenderingContext, type: number, source: string) => {
+const createShader = (
+  gl: WebGL2RenderingContext,
+  type: number,
+  source: string,
+) => {
   const shader = gl.createShader(type)
   if (!shader) return null
   gl.shaderSource(shader, source)
@@ -482,7 +490,8 @@ const resizeCanvasToDisplaySize = (canvas: HTMLCanvasElement) => {
   const dpr = Math.min(2, window.devicePixelRatio || 1)
   const displayWidth = Math.max(1, Math.round(canvas.clientWidth * dpr))
   const displayHeight = Math.max(1, Math.round(canvas.clientHeight * dpr))
-  const needsResize = canvas.width !== displayWidth || canvas.height !== displayHeight
+  const needsResize =
+    canvas.width !== displayWidth || canvas.height !== displayHeight
   if (needsResize) {
     canvas.width = displayWidth
     canvas.height = displayHeight
@@ -565,14 +574,25 @@ class ArcballControl {
         angleFactor *= amplification
         this.pointerRotation = this.quatFromVectors(a, b, angleFactor)
       } else {
-        this.pointerRotation = slerpQuat(this.pointerRotation, identityQuat(), intensity)
+        this.pointerRotation = slerpQuat(
+          this.pointerRotation,
+          identityQuat(),
+          intensity,
+        )
       }
     } else {
       const intensity = 0.1 * timeScale
-      this.pointerRotation = slerpQuat(this.pointerRotation, identityQuat(), intensity)
+      this.pointerRotation = slerpQuat(
+        this.pointerRotation,
+        identityQuat(),
+        intensity,
+      )
 
       if (this.snapTargetDirection) {
-        const sqrDist = distanceSquared3(this.snapTargetDirection, this.snapDirection)
+        const sqrDist = distanceSquared3(
+          this.snapTargetDirection,
+          this.snapDirection,
+        )
         const distanceFactor = Math.max(0.1, 1 - sqrDist * 10)
         angleFactor *= 0.2 * distanceFactor
         snapRotation = this.quatFromVectors(
@@ -585,7 +605,9 @@ class ArcballControl {
 
     const combined = multiplyQuat(snapRotation, this.pointerRotation)
     this.orientation = normalizeQuat(multiplyQuat(combined, this.orientation))
-    this.combinedQuat = normalizeQuat(slerpQuat(this.combinedQuat, combined, 0.8 * timeScale))
+    this.combinedQuat = normalizeQuat(
+      slerpQuat(this.combinedQuat, combined, 0.8 * timeScale),
+    )
 
     const rad = Math.acos(Math.min(Math.max(this.combinedQuat[3], -1), 1)) * 2
     const s = Math.sin(rad / 2)
@@ -639,7 +661,7 @@ class InfiniteMovieEngine<T> {
   private movementActive = false
   private smoothRotationVelocity = 0
   private nearestVertexIndex = 0
-  private readonly cardBuffers = createCardGeometry()
+  private readonly iconBuffers = createDiscGeometry()
   private readonly worldMatrix = identityMat4()
   private readonly viewMatrix = identityMat4()
   private readonly cameraMatrix = identityMat4()
@@ -657,7 +679,9 @@ class InfiniteMovieEngine<T> {
     private readonly canvas: HTMLCanvasElement,
     private readonly items: InfiniteMovieMenuItem<T>[],
     private readonly scale: number,
-    private readonly onActiveItemChange: (item: InfiniteMovieMenuItem<T>) => void,
+    private readonly onActiveItemChange: (
+      item: InfiniteMovieMenuItem<T>,
+    ) => void,
     private readonly onMovementChange: (moving: boolean) => void,
   ) {
     const gl = canvas.getContext('webgl2', {
@@ -667,7 +691,9 @@ class InfiniteMovieEngine<T> {
       powerPreference: 'high-performance',
       premultipliedAlpha: false,
     })
-    const program = gl ? createProgram(gl, vertexShaderSource, fragmentShaderSource) : null
+    const program = gl
+      ? createProgram(gl, vertexShaderSource, fragmentShaderSource)
+      : null
     if (!gl || !program) throw new Error('WebGL2 could not initialize')
     this.gl = gl
     this.program = program
@@ -676,16 +702,25 @@ class InfiniteMovieEngine<T> {
       uWorldMatrix: gl.getUniformLocation(program, 'uWorldMatrix'),
       uViewMatrix: gl.getUniformLocation(program, 'uViewMatrix'),
       uProjectionMatrix: gl.getUniformLocation(program, 'uProjectionMatrix'),
-      uRotationAxisVelocity: gl.getUniformLocation(program, 'uRotationAxisVelocity'),
+      uRotationAxisVelocity: gl.getUniformLocation(
+        program,
+        'uRotationAxisVelocity',
+      ),
       uTex: gl.getUniformLocation(program, 'uTex'),
       uItemCount: gl.getUniformLocation(program, 'uItemCount'),
       uAtlasSize: gl.getUniformLocation(program, 'uAtlasSize'),
     }
 
-    this.instancePositions = createSphericalContactSheetPositions()
-    this.instanceMatricesArray = new Float32Array(this.instancePositions.length * 16)
+    this.instancePositions = createFibonacciSpherePositions()
+    this.instanceMatricesArray = new Float32Array(
+      this.instancePositions.length * 16,
+    )
     this.instanceMatrices = this.instancePositions.map((_, index) => {
-      const matrix = new Float32Array(this.instanceMatricesArray.buffer, index * 16 * 4, 16)
+      const matrix = new Float32Array(
+        this.instanceMatricesArray.buffer,
+        index * 16 * 4,
+        16,
+      )
       matrix.set(identityMat4())
       return matrix
     })
@@ -693,7 +728,9 @@ class InfiniteMovieEngine<T> {
     this.instanceBuffer = gl.createBuffer()
     this.initGeometry()
     this.initTexture()
-    this.control = new ArcballControl(canvas, (deltaTime) => this.onControlUpdate(deltaTime))
+    this.control = new ArcballControl(canvas, (deltaTime) =>
+      this.onControlUpdate(deltaTime),
+    )
     this.resize()
   }
 
@@ -704,12 +741,19 @@ class InfiniteMovieEngine<T> {
     this.frames += deltaTime / TARGET_FRAME_DURATION
     this.animate(deltaTime)
     this.render()
-    this.frameId = window.requestAnimationFrame((nextTime) => this.run(nextTime))
+    this.frameId = window.requestAnimationFrame((nextTime) =>
+      this.run(nextTime),
+    )
   }
 
   resize() {
     if (resizeCanvasToDisplaySize(this.canvas)) {
-      this.gl.viewport(0, 0, this.gl.drawingBufferWidth, this.gl.drawingBufferHeight)
+      this.gl.viewport(
+        0,
+        0,
+        this.gl.drawingBufferWidth,
+        this.gl.drawingBufferHeight,
+      )
     }
     this.updateProjectionMatrix()
   }
@@ -725,22 +769,34 @@ class InfiniteMovieEngine<T> {
     this.vao = gl.createVertexArray()
     gl.bindVertexArray(this.vao)
 
-    const vertexBuffer = createBuffer(gl, this.cardBuffers.vertices, gl.STATIC_DRAW)
+    const vertexBuffer = createBuffer(
+      gl,
+      this.iconBuffers.vertices,
+      gl.STATIC_DRAW,
+    )
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
     gl.enableVertexAttribArray(0)
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0)
 
-    const uvBuffer = createBuffer(gl, this.cardBuffers.uvs, gl.STATIC_DRAW)
+    const uvBuffer = createBuffer(gl, this.iconBuffers.uvs, gl.STATIC_DRAW)
     gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer)
     gl.enableVertexAttribArray(1)
     gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0)
 
     const indexBuffer = gl.createBuffer()
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, this.cardBuffers.indices, gl.STATIC_DRAW)
+    gl.bufferData(
+      gl.ELEMENT_ARRAY_BUFFER,
+      this.iconBuffers.indices,
+      gl.STATIC_DRAW,
+    )
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, this.instanceMatricesArray.byteLength, gl.DYNAMIC_DRAW)
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      this.instanceMatricesArray.byteLength,
+      gl.DYNAMIC_DRAW,
+    )
     for (let index = 0; index < 4; index += 1) {
       const loc = 2 + index
       gl.enableVertexAttribArray(loc)
@@ -758,7 +814,11 @@ class InfiniteMovieEngine<T> {
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR)
+    gl.texParameteri(
+      gl.TEXTURE_2D,
+      gl.TEXTURE_MIN_FILTER,
+      gl.LINEAR_MIPMAP_LINEAR,
+    )
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.texImage2D(
       gl.TEXTURE_2D,
@@ -777,23 +837,39 @@ class InfiniteMovieEngine<T> {
     const atlas = document.createElement('canvas')
     const context = atlas.getContext('2d')
     if (!context) return
-    atlas.width = this.atlasSize * TEXTURE_CELL_SIZE
-    atlas.height = this.atlasSize * TEXTURE_CELL_SIZE
+    atlas.width = this.atlasSize * ICON_TEXTURE_CELL_SIZE
+    atlas.height = this.atlasSize * ICON_TEXTURE_CELL_SIZE
 
-    void Promise.all(this.items.map((item) => this.loadImage(item.image))).then((images) => {
-      if (this.disposed || !this.texture) return
-      context.fillStyle = '#050505'
-      context.fillRect(0, 0, atlas.width, atlas.height)
-      images.forEach((image, index) => {
-        const x = (index % this.atlasSize) * TEXTURE_CELL_SIZE
-        const y = Math.floor(index / this.atlasSize) * TEXTURE_CELL_SIZE
-        this.drawPosterIntoCell(context, image, x, y, TEXTURE_CELL_SIZE, TEXTURE_CELL_SIZE)
-      })
+    void Promise.all(this.items.map((item) => this.loadImage(item.image))).then(
+      (images) => {
+        if (this.disposed || !this.texture) return
+        context.fillStyle = '#050505'
+        context.fillRect(0, 0, atlas.width, atlas.height)
+        images.forEach((image, index) => {
+          const x = (index % this.atlasSize) * ICON_TEXTURE_CELL_SIZE
+          const y = Math.floor(index / this.atlasSize) * ICON_TEXTURE_CELL_SIZE
+          this.drawImageCover(
+            context,
+            image,
+            x,
+            y,
+            ICON_TEXTURE_CELL_SIZE,
+            ICON_TEXTURE_CELL_SIZE,
+          )
+        })
 
-      gl.bindTexture(gl.TEXTURE_2D, this.texture)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas)
-      gl.generateMipmap(gl.TEXTURE_2D)
-    })
+        gl.bindTexture(gl.TEXTURE_2D, this.texture)
+        gl.texImage2D(
+          gl.TEXTURE_2D,
+          0,
+          gl.RGBA,
+          gl.RGBA,
+          gl.UNSIGNED_BYTE,
+          atlas,
+        )
+        gl.generateMipmap(gl.TEXTURE_2D)
+      },
+    )
   }
 
   private loadImage(src: string) {
@@ -805,7 +881,7 @@ class InfiniteMovieEngine<T> {
     })
   }
 
-  private drawPosterIntoCell(
+  private drawImageCover(
     context: CanvasRenderingContext2D,
     image: HTMLImageElement,
     x: number,
@@ -818,23 +894,19 @@ class InfiniteMovieEngine<T> {
       context.fillRect(x, y, width, height)
       return
     }
-    const posterWidth = width * CARD_ASPECT
-    const posterX = x + (width - posterWidth) / 2
-    const scale = Math.max(posterWidth / image.naturalWidth, height / image.naturalHeight)
+    const scale = Math.max(
+      width / image.naturalWidth,
+      height / image.naturalHeight,
+    )
     const drawWidth = image.naturalWidth * scale
     const drawHeight = image.naturalHeight * scale
-    context.save()
-    context.beginPath()
-    context.rect(posterX, y, posterWidth, height)
-    context.clip()
     context.drawImage(
       image,
-      posterX + (posterWidth - drawWidth) / 2,
+      x + (width - drawWidth) / 2,
       y + (height - drawHeight) / 2,
       drawWidth,
       drawHeight,
     )
-    context.restore()
   }
 
   private animate(deltaTime: number) {
@@ -845,10 +917,15 @@ class InfiniteMovieEngine<T> {
       const transformed = transformQuat3(position, this.control.orientation)
       const depthScale =
         (Math.abs(transformed[2]) / SPHERE_RADIUS) * 0.52 + (1 - 0.52)
-      const finalScale = depthScale * 0.31
+      const finalScale = depthScale * 0.3
       const matrix = identityMat4()
       const translateToSphere = translationMat4(negate3(transformed))
-      const faceCenter = targetToMat4(identityMat4(), [0, 0, 0], transformed, [0, 1, 0])
+      const faceCenter = targetToMat4(
+        identityMat4(),
+        [0, 0, 0],
+        transformed,
+        [0, 1, 0],
+      )
       const scaleMatrix = scalingMat4([finalScale, finalScale, finalScale])
       const backTranslate = translationMat4([0, 0, -SPHERE_RADIUS])
 
@@ -877,7 +954,11 @@ class InfiniteMovieEngine<T> {
 
     gl.uniformMatrix4fv(this.locations.uWorldMatrix, false, this.worldMatrix)
     gl.uniformMatrix4fv(this.locations.uViewMatrix, false, this.viewMatrix)
-    gl.uniformMatrix4fv(this.locations.uProjectionMatrix, false, this.projectionMatrix)
+    gl.uniformMatrix4fv(
+      this.locations.uProjectionMatrix,
+      false,
+      this.projectionMatrix,
+    )
     gl.uniform4f(
       this.locations.uRotationAxisVelocity,
       this.control.rotationAxis[0],
@@ -893,7 +974,7 @@ class InfiniteMovieEngine<T> {
     gl.bindVertexArray(this.vao)
     gl.drawElementsInstanced(
       gl.TRIANGLES,
-      this.cardBuffers.indices.length,
+      this.iconBuffers.indices.length,
       gl.UNSIGNED_SHORT,
       0,
       this.instancePositions.length,
@@ -914,13 +995,17 @@ class InfiniteMovieEngine<T> {
 
     if (!this.control.isPointerDown) {
       this.nearestVertexIndex = this.findNearestVertexIndex()
-      const item = this.items[this.nearestVertexIndex % Math.max(1, this.items.length)]
+      const item =
+        this.items[this.nearestVertexIndex % Math.max(1, this.items.length)]
       if (item) this.onActiveItemChange(item)
       this.control.snapTargetDirection = normalize3(
-        transformQuat3(this.instancePositions[this.nearestVertexIndex], this.control.orientation),
+        transformQuat3(
+          this.instancePositions[this.nearestVertexIndex],
+          this.control.orientation,
+        ),
       )
     } else {
-      cameraTargetZ += this.control.rotationVelocity * 86 + 2.35
+      cameraTargetZ += this.control.rotationVelocity * 68 + 2.1
       damping = 7 / timeScale
     }
 
@@ -931,7 +1016,7 @@ class InfiniteMovieEngine<T> {
   private findNearestVertexIndex() {
     const inversOrientation = conjugateQuat(this.control.orientation)
     const target = transformQuat3(this.control.snapDirection, inversOrientation)
-    let maxDot = -Infinity
+    let maxDot = Number.NEGATIVE_INFINITY
     let nearestVertexIndex = 0
     this.instancePositions.forEach((position, index) => {
       const d = dot3(target, position)
@@ -944,7 +1029,12 @@ class InfiniteMovieEngine<T> {
   }
 
   private updateCameraMatrix() {
-    targetToMat4(this.cameraMatrix, this.cameraPosition, [0, 0, 0], this.cameraUp)
+    targetToMat4(
+      this.cameraMatrix,
+      this.cameraPosition,
+      [0, 0, 0],
+      this.cameraUp,
+    )
     invertMat4(this.viewMatrix, this.cameraMatrix)
   }
 
@@ -952,7 +1042,7 @@ class InfiniteMovieEngine<T> {
     const gl = this.gl
     const canvas = gl.canvas as HTMLCanvasElement
     const aspect = canvas.clientWidth / Math.max(1, canvas.clientHeight)
-    const height = SPHERE_RADIUS * 0.58
+    const height = SPHERE_RADIUS * 0.7
     const distance = this.cameraPosition[2]
     const fov =
       aspect > 1
@@ -973,15 +1063,18 @@ export const InfiniteMovieMenu = <T,>({
 }: InfiniteMovieMenuProps<T>) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const activeItemRef = useRef<InfiniteMovieMenuItem<T> | null>(null)
-  const [activeItem, setActiveItem] = useState<InfiniteMovieMenuItem<T> | null>(null)
+  const [activeItem, setActiveItem] = useState<InfiniteMovieMenuItem<T> | null>(
+    null,
+  )
   const [isMoving, setIsMoving] = useState(false)
   const [webglError, setWebglError] = useState('')
 
-  const itemKey = useMemo(() => items.map((item) => item.id).join('|'), [items])
-
   useEffect(() => {
     const nextActive =
-      items.find((item) => item.id === activeId) ?? activeItemRef.current ?? items[0] ?? null
+      items.find((item) => item.id === activeId) ??
+      activeItemRef.current ??
+      items[0] ??
+      null
     activeItemRef.current = nextActive
     setActiveItem(nextActive)
   }, [activeId, items])
@@ -1009,45 +1102,47 @@ export const InfiniteMovieMenu = <T,>({
       window.addEventListener('resize', onResize)
       setWebglError('')
     } catch (error) {
-      setWebglError(error instanceof Error ? error.message : 'WebGL could not initialize')
+      setWebglError(
+        error instanceof Error ? error.message : 'WebGL could not initialize',
+      )
     }
 
     return () => {
       window.removeEventListener('resize', onResize)
       engine?.dispose()
     }
-  }, [itemKey, items, scale, onActiveItemChange])
+  }, [items, scale, onActiveItemChange])
+
+  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
+    if (event.deltaY < -10 && activeItemRef.current) {
+      event.preventDefault()
+      onSelectItem(activeItemRef.current)
+    }
+  }
 
   return (
-    <div className="warp-infinite-menu">
+    <div className='warp-infinite-menu' onWheel={handleWheel}>
       <canvas
         ref={canvasRef}
-        className="warp-infinite-menu-canvas"
-        aria-label="Infinite movie poster menu"
-        onClick={() => {
-          if (activeItemRef.current) onSelectItem(activeItemRef.current)
-        }}
+        className='warp-infinite-menu-canvas'
+        aria-label='Infinite movie poster menu'
       />
 
-      <div className="warp-infinite-sheen" />
+      <div className='warp-infinite-sheen' />
 
       {activeItem ? (
-        <button
-          type="button"
-          className={cn('warp-focus-card', isMoving && 'is-moving')}
-          onClick={() => onSelectItem(activeItem)}
-        >
+        <div className={cn('warp-focus-card', isMoving && 'is-moving')}>
           <span>{activeItem.title}</span>
           <span>{activeItem.meta}</span>
           <span>{activeItem.description}</span>
-        </button>
+        </div>
       ) : null}
 
-      <div className="warp-wall-loading" data-state={loadState}>
+      <div className='warp-wall-loading' data-state={loadState}>
         Loading movies
       </div>
 
-      {webglError ? <div className="warp-webgl-error">{webglError}</div> : null}
+      {webglError ? <div className='warp-webgl-error'>{webglError}</div> : null}
     </div>
   )
 }

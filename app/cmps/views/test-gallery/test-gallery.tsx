@@ -1,4 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  type WheelEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { cn } from '../../../utils/tw'
 import { InfiniteMovieMenu } from './infinite-movie-menu'
 
@@ -79,7 +85,8 @@ const mapMovie = (raw: RawMovie, index: number): TestMovie => {
     overview: getText(raw, 'overview'),
     genres: splitList(getText(raw, 'genres')),
     year,
-    runtime: getText(raw, 'time_str') || `${getNumber(raw, 'runtime_minutes')}m`,
+    runtime:
+      getText(raw, 'time_str') || `${getNumber(raw, 'runtime_minutes')}m`,
     rating: rating ? rating.toFixed(1) : 'N/A',
     countries: splitList(getText(raw, 'production_countries'), 1).join(', '),
     posterUrl: `/media/single/${index}.jpg`,
@@ -196,9 +203,20 @@ export const TestGalleryApp = () => {
     setDetailsMovieId(movie.id)
   }, [])
 
+  useEffect(() => {
+    if (!detailsMovieId) return
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDetailsMovieId(null)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [detailsMovieId])
+
   return (
     <main
-      className="phantom-test-shell warp-shell min-h-dvh overflow-hidden bg-black text-white"
+      className='phantom-test-shell warp-shell min-h-dvh overflow-hidden bg-black text-white'
       onMouseMove={(event) => {
         const x = event.clientX / Math.max(window.innerWidth, 1) - 0.5
         const y = event.clientY / Math.max(window.innerHeight, 1) - 0.5
@@ -234,8 +252,8 @@ export const TestGalleryApp = () => {
       />
 
       <button
-        type="button"
-        className="warp-filter-button"
+        type='button'
+        className='warp-filter-button'
         aria-expanded={filterOpen}
         onClick={() => setFilterOpen((isOpen) => !isOpen)}
       >
@@ -308,14 +326,14 @@ const WarpWall = ({
 
   if (loadState === 'error') {
     return (
-      <section className="warp-message">
+      <section className='warp-message'>
         Movie data could not load. Refresh and try again.
       </section>
     )
   }
 
   return (
-    <section className="warp-wall" aria-label="Warp Wall movie gallery">
+    <section className='warp-wall' aria-label='Warp Wall movie gallery'>
       <InfiniteMovieMenu
         activeId={activeMovieId}
         items={menuItems}
@@ -353,24 +371,28 @@ const WarpList = ({
   }, [movies])
 
   return (
-    <section className="warp-list" aria-label="Movie list view">
-      <header className="warp-list-heading">
-        <h1>All movies</h1>
-        <p>{loadState === 'ready' ? `${movies.length} movies` : loadState}</p>
+    <section className='warp-list' aria-label='Movie list view'>
+      <header className='warp-list-heading'>
+        <h1>Movie index</h1>
+        <p>
+          {loadState === 'ready'
+            ? `${movies.length} titles indexed`
+            : loadState}
+        </p>
       </header>
 
       {loadState === 'error' ? (
-        <p className="warp-list-error">{errorMessage}</p>
+        <p className='warp-list-error'>{errorMessage}</p>
       ) : null}
 
-      <div className="warp-list-groups">
+      <div className='warp-list-groups'>
         {groupedMovies.map(([year, yearMovies]) => (
-          <section className="warp-list-group" key={year}>
+          <section className='warp-list-group' key={year}>
             <h2>{year}</h2>
-            <div className="warp-list-rows">
+            <div className='warp-list-rows'>
               {yearMovies.map((movie) => (
                 <button
-                  type="button"
+                  type='button'
                   key={movie.id}
                   className={cn(
                     'warp-list-row',
@@ -380,8 +402,24 @@ const WarpList = ({
                   onFocus={() => onSelectMovie(movie)}
                   onMouseEnter={() => onSelectMovie(movie)}
                 >
-                  <span>{movie.title}</span>
-                  <span>{movie.genres[0] ?? 'Movie'}</span>
+                  <span className='warp-list-row-poster' aria-hidden='true'>
+                    <img src={movie.posterUrl} alt='' loading='lazy' />
+                  </span>
+                  <span className='warp-list-row-main'>
+                    <span className='warp-list-row-title'>{movie.title}</span>
+                    <span className='warp-list-row-meta'>
+                      {movie.year} / {movie.runtime} /{' '}
+                      {movie.countries || 'Cinema'}
+                    </span>
+                  </span>
+                  <span className='warp-list-row-genres'>
+                    {(movie.genres.length ? movie.genres : ['Movie']).map(
+                      (genre) => (
+                        <span key={genre}>{genre}</span>
+                      ),
+                    )}
+                  </span>
+                  <span className='warp-list-row-rating'>{movie.rating}</span>
                 </button>
               ))}
             </div>
@@ -408,31 +446,32 @@ const WarpChrome = ({
   onModeChange,
 }: WarpChromeProps) => (
   <>
-    <header className="warp-topbar">
-      <a href="/" className="warp-mark" aria-label="What to Watch home">
-        <svg viewBox="0 0 64 78" aria-hidden="true">
-          <path d="M33.5 4.5c8.2 1.4 17.8 14.4 21.3 28.1 3.7 14.1-.9 30.2-9.8 35.7-2.9 1.8-5.3-3.9-8.5-2.5-4.4 2-7 7.1-10.8 5.9-3.5-1.1-3.2-7.2-6.3-8.7-4.1-2-8.9 2.7-10.4-.6C4.7 53.8 5.7 35.6 11.5 23 16.6 11.8 25.3 3.1 33.5 4.5Z" />
-          <path d="M24.2 31.7c.5-4.1 3.3-7.2 7-7.7 5.2-.7 10.3 4.5 11.2 11.4" />
+    <header className='warp-topbar'>
+      <a href='/' className='warp-mark' aria-label='What to Watch home'>
+        <span className='sr-only'>What to Watch home</span>
+        <svg viewBox='0 0 64 78' aria-hidden='true'>
+          <path d='M33.5 4.5c8.2 1.4 17.8 14.4 21.3 28.1 3.7 14.1-.9 30.2-9.8 35.7-2.9 1.8-5.3-3.9-8.5-2.5-4.4 2-7 7.1-10.8 5.9-3.5-1.1-3.2-7.2-6.3-8.7-4.1-2-8.9 2.7-10.4-.6C4.7 53.8 5.7 35.6 11.5 23 16.6 11.8 25.3 3.1 33.5 4.5Z' />
+          <path d='M24.2 31.7c.5-4.1 3.3-7.2 7-7.7 5.2-.7 10.3 4.5 11.2 11.4' />
         </svg>
       </a>
-      <div className="warp-sound">
+      <div className='warp-sound'>
         <span />
         Sound [Off]
       </div>
-      <p className="warp-manifesto">
+      <p className='warp-manifesto'>
         What to Watch is a movie-led discovery wall built for indecisive nights.
       </p>
-      <div className="warp-clock">
+      <div className='warp-clock'>
         <strong>{timeLabel || '--:--'} GMT+1</strong>
         <span>London, UK</span>
         <span>Lagos, NG</span>
       </div>
-      <a className="warp-cta" href="/">
+      <a className='warp-cta' href='/'>
         Let&apos;s Watch
       </a>
     </header>
 
-    <div className="warp-active-peek" aria-live="polite">
+    <div className='warp-active-peek' aria-live='polite'>
       <span>{activeMovie?.title ?? 'Loading'}</span>
       <span>
         {activeMovie
@@ -441,31 +480,31 @@ const WarpChrome = ({
       </span>
     </div>
 
-    <nav className="warp-mode-toggle" aria-label="View mode">
+    <nav className='warp-mode-toggle' aria-label='View mode'>
       <button
-        type="button"
-        aria-label="Warp Wall"
+        type='button'
+        aria-label='Warp Wall'
         aria-pressed={mode === 'wall'}
         onClick={() => onModeChange('wall')}
       >
-        <span className="warp-grid-icon" />
+        <span className='warp-grid-icon' />
       </button>
       <button
-        type="button"
-        aria-label="List view"
+        type='button'
+        aria-label='List view'
         aria-pressed={mode === 'list'}
         onClick={() => onModeChange('list')}
       >
-        <span className="warp-list-icon" />
+        <span className='warp-list-icon' />
       </button>
     </nav>
 
-    <nav className="warp-main-nav" aria-label="Test navigation">
-      <a className="is-active" href="/test">
+    <nav className='warp-main-nav' aria-label='Test navigation'>
+      <a className='is-active' href='/'>
         Watch
       </a>
-      <a href="/test">About</a>
-      <a href="/test">Genres</a>
+      <a href='/'>About</a>
+      <a href='/'>Genres</a>
     </nav>
   </>
 )
@@ -481,10 +520,10 @@ const FilterPanel = ({
   genres,
   onSelectGenre,
 }: FilterPanelProps) => (
-  <aside className="warp-filter-panel">
+  <aside className='warp-filter-panel'>
     <p>Filter by genre</p>
     <button
-      type="button"
+      type='button'
       className={cn(!activeGenre && 'is-active')}
       onClick={() => onSelectGenre(null)}
     >
@@ -492,7 +531,7 @@ const FilterPanel = ({
     </button>
     {genres.map((genre) => (
       <button
-        type="button"
+        type='button'
         className={cn(activeGenre === genre && 'is-active')}
         key={genre}
         onClick={() => onSelectGenre(genre)}
@@ -513,44 +552,60 @@ const MovieDetailsCard = ({
   movie,
   onClose,
   onSelectGenre,
-}: MovieDetailsCardProps) => (
-  <section className="warp-details-layer" aria-label={`${movie.title} details`}>
-    <button
-      type="button"
-      className="warp-details-backdrop"
-      aria-label="Close details"
-      onClick={onClose}
-    />
-    <article className="warp-details-card">
+}: MovieDetailsCardProps) => {
+  const handleWheel = (event: WheelEvent<HTMLElement>) => {
+    if (event.deltaY > 10) onClose()
+  }
+
+  return (
+    <section
+      className='warp-details-layer'
+      aria-label={`${movie.title} details`}
+      onWheel={handleWheel}
+    >
       <button
-        type="button"
-        className="warp-details-close"
-        aria-label="Close details"
+        type='button'
+        className='warp-details-backdrop'
+        aria-label='Close details'
         onClick={onClose}
-      >
-        Close
-      </button>
-      <div className="warp-details-poster">
-        <img src={movie.posterUrl} alt="" />
-      </div>
-      <div className="warp-details-copy">
-        <p className="warp-details-kicker">
-          {movie.year} / {movie.rating} / {movie.runtime}
-        </p>
-        <h2>{movie.title}</h2>
-        {movie.tagline ? <p className="warp-details-tagline">{movie.tagline}</p> : null}
-        <p className="warp-details-overview">
-          {movie.overview || 'No overview available yet.'}
-        </p>
-        <div className="warp-details-genres">
-          {movie.genres.map((genre) => (
-            <button type="button" key={genre} onClick={() => onSelectGenre(genre)}>
-              {genre}
-            </button>
-          ))}
+      />
+      <article className='warp-details-card'>
+        <button
+          type='button'
+          className='warp-details-close'
+          aria-label='Close details'
+          onClick={onClose}
+        >
+          Close
+        </button>
+        <div className='warp-details-poster'>
+          <img src={movie.posterUrl} alt='' />
         </div>
-        <p className="warp-details-origin">{movie.countries || 'Cinema'}</p>
-      </div>
-    </article>
-  </section>
-)
+        <div className='warp-details-copy'>
+          <p className='warp-details-kicker'>
+            {movie.year} / {movie.rating} / {movie.runtime}
+          </p>
+          <h2>{movie.title}</h2>
+          {movie.tagline ? (
+            <p className='warp-details-tagline'>{movie.tagline}</p>
+          ) : null}
+          <p className='warp-details-overview'>
+            {movie.overview || 'No overview available yet.'}
+          </p>
+          <div className='warp-details-genres'>
+            {movie.genres.map((genre) => (
+              <button
+                type='button'
+                key={genre}
+                onClick={() => onSelectGenre(genre)}
+              >
+                {genre}
+              </button>
+            ))}
+          </div>
+          <p className='warp-details-origin'>{movie.countries || 'Cinema'}</p>
+        </div>
+      </article>
+    </section>
+  )
+}
