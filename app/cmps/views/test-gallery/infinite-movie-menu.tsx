@@ -1,4 +1,10 @@
-import { type WheelEvent, useEffect, useRef, useState } from 'react'
+import {
+  type WheelEvent,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { cn } from '../../../utils/tw'
 
 export type InfiniteMovieMenuItem<T> = {
@@ -12,6 +18,7 @@ export type InfiniteMovieMenuItem<T> = {
 
 type InfiniteMovieMenuProps<T> = {
   activeId: string | null
+  isDetailsOpen: boolean
   items: InfiniteMovieMenuItem<T>[]
   loadState: 'loading' | 'ready' | 'error'
   scale?: number
@@ -29,6 +36,9 @@ const TARGET_FRAME_DURATION = 1000 / 60
 const ICON_TEXTURE_CELL_SIZE = 256
 const ICON_INSTANCE_COUNT = 360
 const ICON_SEGMENTS = 40
+const ICON_REST_SCALE = 0.155
+const ICON_DETAIL_SCALE = 0.265
+const DETAIL_OPEN_DELAY_MS = 900
 
 const vertexShaderSource = `#version 300 es
 uniform mat4 uWorldMatrix;
@@ -52,7 +62,7 @@ void main() {
 
   if (gl_VertexID > 0) {
     vec3 rotationAxis = uRotationAxisVelocity.xyz;
-    float rotationVelocity = min(0.16, uRotationAxisVelocity.w * 16.0);
+    float rotationVelocity = min(0.095, uRotationAxisVelocity.w * 9.0);
     vec3 stretchDir = normalize(cross(centerPos, rotationAxis));
     vec3 relativeVertexPos = normalize(worldPosition.xyz - centerPos);
     float strength = dot(stretchDir, relativeVertexPos);
@@ -661,6 +671,9 @@ class InfiniteMovieEngine<T> {
   private movementActive = false
   private smoothRotationVelocity = 0
   private nearestVertexIndex = 0
+  private detailProgress = 0
+  private detailTargetProgress = 0
+  private detailVertexIndex: number | null = null
   private readonly iconBuffers = createDiscGeometry()
   private readonly worldMatrix = identityMat4()
   private readonly viewMatrix = identityMat4()
@@ -762,6 +775,53 @@ class InfiniteMovieEngine<T> {
     this.disposed = true
     window.cancelAnimationFrame(this.frameId)
     this.control.dispose()
+  }
+
+  setDetailFocus(itemId: string | null, open: boolean) {
+    if (open && itemId) {
+      this.detailVertexIndex = this.findBestInstanceIndexForItem(itemId)
+      const detailPosition = this.instancePositions[this.detailVertexIndex]
+      if (detailPosition) {
+        this.control.snapTargetDirection = normalize3(
+          transformQuat3(detailPosition, this.control.orientation),
+        )
+      }
+    }
+
+    this.detailTargetProgress = open ? 1 : 0
+    if (!open) this.detailVertexIndex = null
+  }
+
+  pickItemAt(clientX: number, clientY: number) {
+    const rect = this.canvas.getBoundingClientRect()
+    const pointerX = ((clientX - rect.left) / Math.max(rect.width, 1)) * 2 - 1
+    const pointerY = -(
+      ((clientY - rect.top) / Math.max(rect.height, 1)) * 2 -
+      1
+    )
+    const aspect = rect.width / Math.max(rect.height, 1)
+    let nearestIndex = this.nearestVertexIndex
+    let nearestDistance = Number.POSITIVE_INFINITY
+
+    this.instancePositions.forEach((position, index) => {
+      const transformed = transformQuat3(position, this.control.orientation)
+      const frontBias = transformed[2] / SPHERE_RADIUS
+      if (frontBias > 0.78) return
+
+      const projectedX =
+        transformed[0] / (SPHERE_RADIUS * (aspect > 1 ? 1.18 : 0.78))
+      const projectedY = transformed[1] / (SPHERE_RADIUS * 1.05)
+      const dx = projectedX - pointerX
+      const dy = projectedY - pointerY
+      const distance = dx * dx + dy * dy + Math.max(0, frontBias) * 0.18
+
+      if (distance < nearestDistance) {
+        nearestDistance = distance
+        nearestIndex = index
+      }
+    })
+
+    return this.items[nearestIndex % Math.max(1, this.items.length)] ?? null
   }
 
   private initGeometry() {
@@ -912,12 +972,20 @@ class InfiniteMovieEngine<T> {
   private animate(deltaTime: number) {
     const gl = this.gl
     this.control.update(deltaTime)
+    const detailStep = 1 - Math.exp(-deltaTime / 700)
+    this.detailProgress +=
+      (this.detailTargetProgress - this.detailProgress) * detailStep
 
     this.instancePositions.forEach((position, index) => {
       const transformed = transformQuat3(position, this.control.orientation)
       const depthScale =
         (Math.abs(transformed[2]) / SPHERE_RADIUS) * 0.52 + (1 - 0.52)
-      const finalScale = depthScale * 0.3
+      const isDetailTarget = this.detailVertexIndex === index
+      const detailLift = isDetailTarget
+        ? this.detailProgress * (ICON_DETAIL_SCALE - ICON_REST_SCALE)
+        : -this.detailProgress * 0.035
+      const finalScale =
+        depthScale * Math.max(0.16, ICON_REST_SCALE + detailLift)
       const matrix = identityMat4()
       const translateToSphere = translationMat4(negate3(transformed))
       const faceCenter = targetToMat4(
@@ -984,7 +1052,10 @@ class InfiniteMovieEngine<T> {
   private onControlUpdate(deltaTime: number) {
     const timeScale = deltaTime / TARGET_FRAME_DURATION + 0.0001
     let damping = 5 / timeScale
-    let cameraTargetZ = 3.18 * this.scale
+    const restCameraZ = 3.18 * this.scale
+    const detailCameraZ = Math.max(SPHERE_RADIUS + 0.16, 2.64 * this.scale)
+    let cameraTargetZ =
+      restCameraZ + (detailCameraZ - restCameraZ) * this.detailProgress
     const isMoving =
       this.control.isPointerDown || Math.abs(this.smoothRotationVelocity) > 0.01
 
@@ -994,7 +1065,11 @@ class InfiniteMovieEngine<T> {
     }
 
     if (!this.control.isPointerDown) {
-      this.nearestVertexIndex = this.findNearestVertexIndex()
+      const targetVertexIndex =
+        this.detailVertexIndex !== null && this.detailTargetProgress > 0
+          ? this.detailVertexIndex
+          : this.findNearestVertexIndex()
+      this.nearestVertexIndex = targetVertexIndex
       const item =
         this.items[this.nearestVertexIndex % Math.max(1, this.items.length)]
       if (item) this.onActiveItemChange(item)
@@ -1007,6 +1082,10 @@ class InfiniteMovieEngine<T> {
     } else {
       cameraTargetZ += this.control.rotationVelocity * 68 + 2.1
       damping = 7 / timeScale
+    }
+
+    if (this.detailProgress > 0.02 || this.detailTargetProgress > 0) {
+      damping = 13 / timeScale
     }
 
     this.cameraPosition[2] += (cameraTargetZ - this.cameraPosition[2]) / damping
@@ -1025,6 +1104,26 @@ class InfiniteMovieEngine<T> {
         nearestVertexIndex = index
       }
     })
+    return nearestVertexIndex
+  }
+
+  private findBestInstanceIndexForItem(itemId: string) {
+    const inversOrientation = conjugateQuat(this.control.orientation)
+    const target = transformQuat3(this.control.snapDirection, inversOrientation)
+    let maxDot = Number.NEGATIVE_INFINITY
+    let nearestVertexIndex = this.nearestVertexIndex
+
+    this.instancePositions.forEach((position, index) => {
+      const item = this.items[index % Math.max(1, this.items.length)]
+      if (item?.id !== itemId) return
+
+      const d = dot3(target, position)
+      if (d > maxDot) {
+        maxDot = d
+        nearestVertexIndex = index
+      }
+    })
+
     return nearestVertexIndex
   }
 
@@ -1055,6 +1154,7 @@ class InfiniteMovieEngine<T> {
 
 export const InfiniteMovieMenu = <T,>({
   activeId,
+  isDetailsOpen,
   items,
   loadState,
   scale = 1,
@@ -1062,7 +1162,9 @@ export const InfiniteMovieMenu = <T,>({
   onSelectItem,
 }: InfiniteMovieMenuProps<T>) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const engineRef = useRef<InfiniteMovieEngine<T> | null>(null)
   const activeItemRef = useRef<InfiniteMovieMenuItem<T> | null>(null)
+  const openTimerRef = useRef<number | null>(null)
   const [activeItem, setActiveItem] = useState<InfiniteMovieMenuItem<T> | null>(
     null,
   )
@@ -1098,6 +1200,7 @@ export const InfiniteMovieMenu = <T,>({
         },
         setIsMoving,
       )
+      engineRef.current = engine
       engine.run()
       window.addEventListener('resize', onResize)
       setWebglError('')
@@ -1109,14 +1212,62 @@ export const InfiniteMovieMenu = <T,>({
 
     return () => {
       window.removeEventListener('resize', onResize)
+      if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+      engineRef.current = null
       engine?.dispose()
     }
   }, [items, scale, onActiveItemChange])
 
+  useEffect(() => {
+    engineRef.current?.setDetailFocus(
+      activeItemRef.current?.id ?? activeId,
+      isDetailsOpen,
+    )
+  }, [activeId, isDetailsOpen])
+
+  const cancelDetailsFlow = useCallback(() => {
+    if (openTimerRef.current) {
+      window.clearTimeout(openTimerRef.current)
+      openTimerRef.current = null
+    }
+    engineRef.current?.setDetailFocus(null, false)
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') cancelDetailsFlow()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [cancelDetailsFlow])
+
+  const beginDetailsFlow = useCallback(
+    (item: InfiniteMovieMenuItem<T> | null) => {
+      if (!item) return
+
+      if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
+      activeItemRef.current = item
+      setActiveItem(item)
+      onActiveItemChange(item)
+      engineRef.current?.setDetailFocus(item.id, true)
+      openTimerRef.current = window.setTimeout(() => {
+        openTimerRef.current = null
+        onSelectItem(item)
+      }, DETAIL_OPEN_DELAY_MS)
+    },
+    [onActiveItemChange, onSelectItem],
+  )
+
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
     if (event.deltaY < -10 && activeItemRef.current) {
       event.preventDefault()
-      onSelectItem(activeItemRef.current)
+      beginDetailsFlow(activeItemRef.current)
+    }
+
+    if (event.deltaY > 10 && openTimerRef.current) {
+      event.preventDefault()
+      cancelDetailsFlow()
     }
   }
 
@@ -1126,16 +1277,26 @@ export const InfiniteMovieMenu = <T,>({
         ref={canvasRef}
         className='warp-infinite-menu-canvas'
         aria-label='Infinite movie poster menu'
+        onClick={(event) => {
+          const pickedItem =
+            engineRef.current?.pickItemAt(event.clientX, event.clientY) ??
+            activeItemRef.current
+          beginDetailsFlow(pickedItem)
+        }}
       />
 
       <div className='warp-infinite-sheen' />
 
       {activeItem ? (
-        <div className={cn('warp-focus-card', isMoving && 'is-moving')}>
+        <button
+          type='button'
+          className={cn('warp-focus-card', isMoving && 'is-moving')}
+          onClick={() => beginDetailsFlow(activeItem)}
+        >
           <span>{activeItem.title}</span>
           <span>{activeItem.meta}</span>
           <span>{activeItem.description}</span>
-        </div>
+        </button>
       ) : null}
 
       <div className='warp-wall-loading' data-state={loadState}>

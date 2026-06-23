@@ -227,6 +227,7 @@ export const TestGalleryApp = () => {
       {mode === 'wall' ? (
         <WarpWall
           activeMovieId={activeMovie?.id ?? null}
+          isDetailsOpen={Boolean(detailsMovieId)}
           loadState={loadState}
           movies={visibleMovies}
           onOpenMovie={handleOpenMovie}
@@ -288,6 +289,7 @@ export const TestGalleryApp = () => {
 
 type WarpWallProps = {
   activeMovieId: string | null
+  isDetailsOpen: boolean
   loadState: LoadState
   movies: TestMovie[]
   onOpenMovie: (movie: TestMovie) => void
@@ -296,6 +298,7 @@ type WarpWallProps = {
 
 const WarpWall = ({
   activeMovieId,
+  isDetailsOpen,
   loadState,
   movies,
   onOpenMovie,
@@ -336,6 +339,7 @@ const WarpWall = ({
     <section className='warp-wall' aria-label='Warp Wall movie gallery'>
       <InfiniteMovieMenu
         activeId={activeMovieId}
+        isDetailsOpen={isDetailsOpen}
         items={menuItems}
         loadState={loadState}
         scale={0.9}
