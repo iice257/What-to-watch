@@ -15,8 +15,15 @@ initTelemetry()
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search)
   const disableUIOverrideParam = urlParams.get('disableUI')
-  const isDiscoveryRoute =
-    window.location.pathname === '/' || window.location.pathname === '/test'
+  if (window.location.pathname === '/test') {
+    window.history.replaceState(
+      null,
+      '',
+      `/${window.location.search}${window.location.hash}`,
+    )
+  }
+
+  const isDiscoveryRoute = window.location.pathname === '/'
 
   if (isDiscoveryRoute) {
     // Keep the discovery experience isolated from the Voroforce renderer.
