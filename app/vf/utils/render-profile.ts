@@ -74,16 +74,8 @@ const getRuntimeUserAgent = () =>
 const getRuntimeMaxTouchPoints = () =>
   typeof navigator !== 'undefined' ? navigator.maxTouchPoints : 0
 
-const getRuntimeOverride = () => {
-  if (typeof window !== 'undefined') {
-    const urlOverride = normalizeRenderProfileId(
-      new URLSearchParams(window.location.search).get('renderProfile'),
-    )
-    if (urlOverride) return urlOverride
-  }
-
-  return normalizeRenderProfileId(import.meta.env.VITE_RENDER_PROFILE)
-}
+const getRuntimeOverride = () =>
+  normalizeRenderProfileId(import.meta.env.VITE_RENDER_PROFILE)
 
 const isMobileLikeRuntime = ({
   isMobileRuntime,

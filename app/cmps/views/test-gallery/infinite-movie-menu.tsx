@@ -1,4 +1,5 @@
 import {
+  type PointerEvent as ReactPointerEvent,
   type WheelEvent,
   useCallback,
   useEffect,
@@ -10,6 +11,7 @@ import { cn } from '../../../utils/tw'
 export type InfiniteMovieMenuItem<T> = {
   id: string
   image: string
+  fallbackImage?: string
   title: string
   description: string
   meta: string
@@ -31,14 +33,21 @@ type Vec3 = [number, number, number]
 type Quat = [number, number, number, number]
 type Mat4 = Float32Array
 
-const SPHERE_RADIUS = 2.35
+const SPHERE_RADIUS = 2.58
 const TARGET_FRAME_DURATION = 1000 / 60
 const ICON_TEXTURE_CELL_SIZE = 256
-const ICON_INSTANCE_COUNT = 360
-const ICON_SEGMENTS = 40
-const ICON_REST_SCALE = 0.155
-const ICON_DETAIL_SCALE = 0.265
-const DETAIL_OPEN_DELAY_MS = 900
+const ICON_TEXTURE_PADDING = 12
+const ICON_INSTANCE_COUNT = 500
+const ICON_REST_SCALE = 0.18
+const ICON_DETAIL_SCALE = 0.34
+const DETAIL_CLICK_OPEN_DELAY_MS = 0
+const DETAIL_WHEEL_OPEN_DELAY_MS = 0
+const DETAIL_FAST_EASE_MS = 150
+const DETAIL_SLOW_EASE_MS = 820
+const DETAIL_CLOSE_EASE_MS = 420
+const CLICK_MOVE_TOLERANCE_PX = 8
+
+type DetailMotion = 'fast' | 'slow' | 'close'
 
 const vertexShaderSource = `#version 300 es
 uniform mat4 uWorldMatrix;
@@ -60,16 +69,14 @@ void main() {
   vec3 centerPos = (uWorldMatrix * aInstanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
   float radius = length(centerPos.xyz);
 
-  if (gl_VertexID > 0) {
-    vec3 rotationAxis = uRotationAxisVelocity.xyz;
-    float rotationVelocity = min(0.095, uRotationAxisVelocity.w * 9.0);
-    vec3 stretchDir = normalize(cross(centerPos, rotationAxis));
-    vec3 relativeVertexPos = normalize(worldPosition.xyz - centerPos);
-    float strength = dot(stretchDir, relativeVertexPos);
-    float invAbsStrength = min(0.0, abs(strength) - 1.0);
-    strength = rotationVelocity * sign(strength) * abs(invAbsStrength * invAbsStrength * invAbsStrength + 1.0);
-    worldPosition.xyz += stretchDir * strength;
-  }
+  vec3 rotationAxis = uRotationAxisVelocity.xyz;
+  float rotationVelocity = min(0.095, uRotationAxisVelocity.w * 9.0);
+  vec3 stretchDir = normalize(cross(centerPos, rotationAxis));
+  vec3 relativeVertexPos = normalize(worldPosition.xyz - centerPos);
+  float strength = dot(stretchDir, relativeVertexPos);
+  float invAbsStrength = min(0.0, abs(strength) - 1.0);
+  strength = rotationVelocity * sign(strength) * abs(invAbsStrength * invAbsStrength * invAbsStrength + 1.0);
+  worldPosition.xyz += stretchDir * strength;
 
   worldPosition.xyz = radius * normalize(worldPosition.xyz);
   gl_Position = uProjectionMatrix * uViewMatrix * worldPosition;
@@ -87,6 +94,7 @@ precision highp float;
 uniform sampler2D uTex;
 uniform int uItemCount;
 uniform int uAtlasSize;
+uniform float uAtlasPadding;
 
 out vec4 outColor;
 
@@ -94,9 +102,10 @@ in vec2 vUvs;
 in float vAlpha;
 flat in int vInstanceId;
 
-float circleMask(vec2 uv) {
-  float dist = distance(uv, vec2(0.5));
-  return 1.0 - smoothstep(0.482, 0.5, dist);
+float roundedRectMask(vec2 uv) {
+  vec2 q = abs(uv - vec2(0.5)) - vec2(0.415, 0.465);
+  float dist = length(max(q, 0.0)) - 0.055;
+  return 1.0 - smoothstep(0.0, 0.018, dist);
 }
 
 void main() {
@@ -105,12 +114,13 @@ void main() {
   int cellY = itemIndex / uAtlasSize;
   vec2 cellSize = vec2(1.0) / vec2(float(uAtlasSize));
   vec2 cellOffset = vec2(float(cellX), float(cellY)) * cellSize;
+  vec2 cellPadding = cellSize * uAtlasPadding;
 
   vec2 st = vec2(vUvs.x, 1.0 - vUvs.y);
-  st = st * cellSize + cellOffset;
+  st = st * (cellSize - cellPadding * 2.0) + cellOffset + cellPadding;
 
   vec4 color = texture(uTex, st);
-  float mask = circleMask(vUvs);
+  float mask = roundedRectMask(vUvs);
   outColor = color;
   outColor.rgb *= mix(0.58, 1.12, vAlpha);
   outColor.a *= mask * vAlpha;
@@ -330,7 +340,6 @@ const distanceSquared3 = (a: Vec3, b: Vec3) => {
   const z = a[2] - b[2]
   return x * x + y * y + z * z
 }
-
 const identityQuat = (): Quat => [0, 0, 0, 1]
 const normalizeQuat = ([x, y, z, w]: Quat): Quat => {
   const len = Math.hypot(x, y, z, w)
@@ -420,22 +429,25 @@ const createFibonacciSpherePositions = (count = ICON_INSTANCE_COUNT) => {
   return positions
 }
 
-const createDiscGeometry = (segments = ICON_SEGMENTS) => {
-  const vertices = [0, 0, 0]
-  const uvs = [0.5, 0.5]
-  const indices: number[] = []
-
-  for (let index = 0; index <= segments; index += 1) {
-    const angle = (index / segments) * Math.PI * 2
-    const x = Math.cos(angle) * 0.5
-    const y = Math.sin(angle) * 0.5
-    vertices.push(x, y, 0)
-    uvs.push(x + 0.5, y + 0.5)
-
-    if (index > 0) {
-      indices.push(0, index, index + 1)
-    }
-  }
+const createDiscGeometry = () => {
+  const halfWidth = 0.34
+  const halfHeight = 0.5
+  const vertices = [
+    -halfWidth,
+    -halfHeight,
+    0,
+    halfWidth,
+    -halfHeight,
+    0,
+    halfWidth,
+    halfHeight,
+    0,
+    -halfWidth,
+    halfHeight,
+    0,
+  ]
+  const uvs = [0, 1, 1, 1, 1, 0, 0, 0]
+  const indices = [0, 1, 2, 0, 2, 3]
 
   return {
     vertices: new Float32Array(vertices),
@@ -528,36 +540,44 @@ class ArcballControl {
     private readonly canvas: HTMLCanvasElement,
     private readonly updateCallback: (deltaTime: number) => void,
   ) {
-    const onPointerDown = (event: PointerEvent) => {
-      this.pointerPos = [event.clientX, event.clientY]
-      this.previousPointerPos = [...this.pointerPos]
-      this.isPointerDown = true
-      this.canvas.setPointerCapture?.(event.pointerId)
-    }
-    const onPointerUp = (event: PointerEvent) => {
-      this.isPointerDown = false
-      this.canvas.releasePointerCapture?.(event.pointerId)
-    }
-    const onPointerMove = (event: PointerEvent) => {
-      if (this.isPointerDown) this.pointerPos = [event.clientX, event.clientY]
-    }
-
-    canvas.addEventListener('pointerdown', onPointerDown)
-    canvas.addEventListener('pointerup', onPointerUp)
-    canvas.addEventListener('pointerleave', onPointerUp)
-    canvas.addEventListener('pointermove', onPointerMove)
     canvas.style.touchAction = 'none'
-
-    this.cleanupHandlers.push(
-      () => canvas.removeEventListener('pointerdown', onPointerDown),
-      () => canvas.removeEventListener('pointerup', onPointerUp),
-      () => canvas.removeEventListener('pointerleave', onPointerUp),
-      () => canvas.removeEventListener('pointermove', onPointerMove),
-    )
   }
 
   dispose() {
     this.cleanupHandlers.forEach((cleanup) => cleanup())
+  }
+
+  beginDrag(clientX: number, clientY: number, pointerId?: number) {
+    this.pointerPos = [clientX, clientY]
+    this.previousPointerPos = [...this.pointerPos]
+    this.isPointerDown = true
+    if (pointerId !== undefined) {
+      try {
+        this.canvas.setPointerCapture?.(pointerId)
+      } catch {
+        // Pointer capture can fail if the pointer was released while hold armed.
+      }
+    }
+  }
+
+  moveDrag(clientX: number, clientY: number) {
+    if (this.isPointerDown) this.pointerPos = [clientX, clientY]
+  }
+
+  endDrag(pointerId?: number) {
+    this.isPointerDown = false
+    if (pointerId !== undefined) {
+      try {
+        this.canvas.releasePointerCapture?.(pointerId)
+      } catch {
+        // Browsers throw when capture was already released or never acquired.
+      }
+    }
+  }
+
+  cancelDrag(pointerId?: number) {
+    this.pointerRotation = slerpQuat(this.pointerRotation, identityQuat(), 0.35)
+    this.endDrag(pointerId)
   }
 
   update(deltaTime: number) {
@@ -674,6 +694,7 @@ class InfiniteMovieEngine<T> {
   private detailProgress = 0
   private detailTargetProgress = 0
   private detailVertexIndex: number | null = null
+  private detailEaseMs = DETAIL_SLOW_EASE_MS
   private readonly iconBuffers = createDiscGeometry()
   private readonly worldMatrix = identityMat4()
   private readonly viewMatrix = identityMat4()
@@ -710,7 +731,7 @@ class InfiniteMovieEngine<T> {
     if (!gl || !program) throw new Error('WebGL2 could not initialize')
     this.gl = gl
     this.program = program
-    this.cameraPosition = [0, 0, 3.18 * scale]
+    this.cameraPosition = [0, 0, 3.42 * scale]
     this.locations = {
       uWorldMatrix: gl.getUniformLocation(program, 'uWorldMatrix'),
       uViewMatrix: gl.getUniformLocation(program, 'uViewMatrix'),
@@ -722,6 +743,7 @@ class InfiniteMovieEngine<T> {
       uTex: gl.getUniformLocation(program, 'uTex'),
       uItemCount: gl.getUniformLocation(program, 'uItemCount'),
       uAtlasSize: gl.getUniformLocation(program, 'uAtlasSize'),
+      uAtlasPadding: gl.getUniformLocation(program, 'uAtlasPadding'),
     }
 
     this.instancePositions = createFibonacciSpherePositions()
@@ -777,7 +799,34 @@ class InfiniteMovieEngine<T> {
     this.control.dispose()
   }
 
-  setDetailFocus(itemId: string | null, open: boolean) {
+  beginPointerDrag(clientX: number, clientY: number, pointerId?: number) {
+    this.control.beginDrag(clientX, clientY, pointerId)
+  }
+
+  movePointerDrag(clientX: number, clientY: number) {
+    this.control.moveDrag(clientX, clientY)
+  }
+
+  endPointerDrag(pointerId?: number) {
+    this.control.endDrag(pointerId)
+  }
+
+  cancelPointerDrag(pointerId?: number) {
+    this.control.cancelDrag(pointerId)
+  }
+
+  setDetailFocus(
+    itemId: string | null,
+    open: boolean,
+    motion: DetailMotion = open ? 'slow' : 'close',
+  ) {
+    this.detailEaseMs =
+      motion === 'fast'
+        ? DETAIL_FAST_EASE_MS
+        : motion === 'close'
+          ? DETAIL_CLOSE_EASE_MS
+          : DETAIL_SLOW_EASE_MS
+
     if (open && itemId) {
       this.detailVertexIndex = this.findBestInstanceIndexForItem(itemId)
       const detailPosition = this.instancePositions[this.detailVertexIndex]
@@ -799,28 +848,46 @@ class InfiniteMovieEngine<T> {
       ((clientY - rect.top) / Math.max(rect.height, 1)) * 2 -
       1
     )
-    const aspect = rect.width / Math.max(rect.height, 1)
-    let nearestIndex = this.nearestVertexIndex
-    let nearestDistance = Number.POSITIVE_INFINITY
+    let nearestIndex: number | null = null
+    let nearestScore = Number.POSITIVE_INFINITY
+    let nearestDepth = Number.NEGATIVE_INFINITY
 
     this.instancePositions.forEach((position, index) => {
       const transformed = transformQuat3(position, this.control.orientation)
       const frontBias = transformed[2] / SPHERE_RADIUS
-      if (frontBias > 0.78) return
-
+      const depthScale =
+        (Math.abs(transformed[2]) / SPHERE_RADIUS) * 0.52 + (1 - 0.52)
       const projectedX =
-        transformed[0] / (SPHERE_RADIUS * (aspect > 1 ? 1.18 : 0.78))
+        transformed[0] /
+        (SPHERE_RADIUS * (rect.width > rect.height ? 1.18 : 0.78))
       const projectedY = transformed[1] / (SPHERE_RADIUS * 1.05)
-      const dx = projectedX - pointerX
-      const dy = projectedY - pointerY
-      const distance = dx * dx + dy * dy + Math.max(0, frontBias) * 0.18
+      if (frontBias > 0.88) return
+      const centerDepth = -frontBias
+      const center: Vec3 = [projectedX, projectedY, centerDepth]
+      const projectedScale = Math.max(0.07, ICON_REST_SCALE * depthScale)
+      const radiusX = projectedScale * 0.78
+      const radiusY = projectedScale * 1.05
+      if (radiusX <= 0.001 || radiusY <= 0.001) return
 
-      if (distance < nearestDistance) {
-        nearestDistance = distance
+      const dx = center[0] - pointerX
+      const dy = center[1] - pointerY
+      const normalizedX = Math.abs(dx) / radiusX
+      const normalizedY = Math.abs(dy) / radiusY
+      if (normalizedX > 1 || normalizedY > 1) return
+      const score = normalizedX * normalizedX + normalizedY * normalizedY
+
+      if (
+        score < nearestScore - 0.08 ||
+        (Math.abs(score - nearestScore) < 0.08 &&
+          center[2] > nearestDepth + 0.0001)
+      ) {
+        nearestScore = score
+        nearestDepth = center[2]
         nearestIndex = index
       }
     })
 
+    if (nearestIndex === null) return null
     return this.items[nearestIndex % Math.max(1, this.items.length)] ?? null
   }
 
@@ -874,11 +941,7 @@ class InfiniteMovieEngine<T> {
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE)
-    gl.texParameteri(
-      gl.TEXTURE_2D,
-      gl.TEXTURE_MIN_FILTER,
-      gl.LINEAR_MIPMAP_LINEAR,
-    )
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR)
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR)
     gl.texImage2D(
       gl.TEXTURE_2D,
@@ -899,44 +962,61 @@ class InfiniteMovieEngine<T> {
     if (!context) return
     atlas.width = this.atlasSize * ICON_TEXTURE_CELL_SIZE
     atlas.height = this.atlasSize * ICON_TEXTURE_CELL_SIZE
+    context.fillStyle = '#050505'
+    context.fillRect(0, 0, atlas.width, atlas.height)
+    context.imageSmoothingEnabled = true
+    context.imageSmoothingQuality = 'high'
 
-    void Promise.all(this.items.map((item) => this.loadImage(item.image))).then(
-      (images) => {
+    const uploadAtlas = () => {
+      if (this.disposed || !this.texture) return
+      gl.bindTexture(gl.TEXTURE_2D, this.texture)
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas)
+    }
+
+    let uploadQueued = false
+    const scheduleAtlasUpload = () => {
+      if (uploadQueued) return
+      uploadQueued = true
+      window.requestAnimationFrame(() => {
+        uploadQueued = false
         if (this.disposed || !this.texture) return
-        context.fillStyle = '#050505'
-        context.fillRect(0, 0, atlas.width, atlas.height)
-        images.forEach((image, index) => {
-          const x = (index % this.atlasSize) * ICON_TEXTURE_CELL_SIZE
-          const y = Math.floor(index / this.atlasSize) * ICON_TEXTURE_CELL_SIZE
-          this.drawImageCover(
-            context,
-            image,
-            x,
-            y,
-            ICON_TEXTURE_CELL_SIZE,
-            ICON_TEXTURE_CELL_SIZE,
-          )
-        })
+        uploadAtlas()
+      })
+    }
 
-        gl.bindTexture(gl.TEXTURE_2D, this.texture)
-        gl.texImage2D(
-          gl.TEXTURE_2D,
-          0,
-          gl.RGBA,
-          gl.RGBA,
-          gl.UNSIGNED_BYTE,
-          atlas,
+    uploadAtlas()
+    this.items.forEach((item, index) => {
+      void this.loadImage(item.image, item.fallbackImage).then((image) => {
+        if (this.disposed || !this.texture) return
+        const x = (index % this.atlasSize) * ICON_TEXTURE_CELL_SIZE
+        const y = Math.floor(index / this.atlasSize) * ICON_TEXTURE_CELL_SIZE
+        this.drawImageCover(
+          context,
+          image,
+          x,
+          y,
+          ICON_TEXTURE_CELL_SIZE,
+          ICON_TEXTURE_CELL_SIZE,
         )
-        gl.generateMipmap(gl.TEXTURE_2D)
-      },
-    )
+        scheduleAtlasUpload()
+      })
+    })
   }
 
-  private loadImage(src: string) {
+  private loadImage(src: string, fallbackSrc?: string) {
     return new Promise<HTMLImageElement>((resolve) => {
       const image = new Image()
+      let triedFallback = false
+      image.crossOrigin = 'anonymous'
       image.onload = () => resolve(image)
-      image.onerror = () => resolve(image)
+      image.onerror = () => {
+        if (fallbackSrc && fallbackSrc !== src && !triedFallback) {
+          triedFallback = true
+          image.src = fallbackSrc
+          return
+        }
+        resolve(image)
+      }
       image.src = src
     })
   }
@@ -954,25 +1034,24 @@ class InfiniteMovieEngine<T> {
       context.fillRect(x, y, width, height)
       return
     }
-    const scale = Math.max(
-      width / image.naturalWidth,
-      height / image.naturalHeight,
-    )
-    const drawWidth = image.naturalWidth * scale
-    const drawHeight = image.naturalHeight * scale
+
     context.drawImage(
       image,
-      x + (width - drawWidth) / 2,
-      y + (height - drawHeight) / 2,
-      drawWidth,
-      drawHeight,
+      0,
+      0,
+      image.naturalWidth,
+      image.naturalHeight,
+      x,
+      y,
+      width,
+      height,
     )
   }
 
   private animate(deltaTime: number) {
     const gl = this.gl
     this.control.update(deltaTime)
-    const detailStep = 1 - Math.exp(-deltaTime / 700)
+    const detailStep = 1 - Math.exp(-deltaTime / this.detailEaseMs)
     this.detailProgress +=
       (this.detailTargetProgress - this.detailProgress) * detailStep
 
@@ -985,7 +1064,7 @@ class InfiniteMovieEngine<T> {
         ? this.detailProgress * (ICON_DETAIL_SCALE - ICON_REST_SCALE)
         : -this.detailProgress * 0.035
       const finalScale =
-        depthScale * Math.max(0.16, ICON_REST_SCALE + detailLift)
+        depthScale * Math.max(0.21, ICON_REST_SCALE + detailLift)
       const matrix = identityMat4()
       const translateToSphere = translationMat4(negate3(transformed))
       const faceCenter = targetToMat4(
@@ -1036,6 +1115,10 @@ class InfiniteMovieEngine<T> {
     )
     gl.uniform1i(this.locations.uItemCount, Math.max(1, this.items.length))
     gl.uniform1i(this.locations.uAtlasSize, this.atlasSize)
+    gl.uniform1f(
+      this.locations.uAtlasPadding,
+      ICON_TEXTURE_PADDING / ICON_TEXTURE_CELL_SIZE,
+    )
     gl.uniform1i(this.locations.uTex, 0)
     gl.activeTexture(gl.TEXTURE0)
     gl.bindTexture(gl.TEXTURE_2D, this.texture)
@@ -1052,8 +1135,8 @@ class InfiniteMovieEngine<T> {
   private onControlUpdate(deltaTime: number) {
     const timeScale = deltaTime / TARGET_FRAME_DURATION + 0.0001
     let damping = 5 / timeScale
-    const restCameraZ = 3.18 * this.scale
-    const detailCameraZ = Math.max(SPHERE_RADIUS + 0.16, 2.64 * this.scale)
+    const restCameraZ = 3.42 * this.scale
+    const detailCameraZ = Math.max(SPHERE_RADIUS + 0.18, 2.86 * this.scale)
     let cameraTargetZ =
       restCameraZ + (detailCameraZ - restCameraZ) * this.detailProgress
     const isMoving =
@@ -1165,9 +1248,17 @@ export const InfiniteMovieMenu = <T,>({
   const engineRef = useRef<InfiniteMovieEngine<T> | null>(null)
   const activeItemRef = useRef<InfiniteMovieMenuItem<T> | null>(null)
   const openTimerRef = useRef<number | null>(null)
+  const pointerDownRef = useRef<{
+    moved: boolean
+    pointerId: number
+    x: number
+    y: number
+  } | null>(null)
+  const suppressNextClickRef = useRef(false)
   const [activeItem, setActiveItem] = useState<InfiniteMovieMenuItem<T> | null>(
     null,
   )
+  const [isHoldPrimed, setIsHoldPrimed] = useState(false)
   const [isMoving, setIsMoving] = useState(false)
   const [webglError, setWebglError] = useState('')
 
@@ -1222,6 +1313,7 @@ export const InfiniteMovieMenu = <T,>({
     engineRef.current?.setDetailFocus(
       activeItemRef.current?.id ?? activeId,
       isDetailsOpen,
+      isDetailsOpen ? 'fast' : 'close',
     )
   }, [activeId, isDetailsOpen])
 
@@ -1230,7 +1322,7 @@ export const InfiniteMovieMenu = <T,>({
       window.clearTimeout(openTimerRef.current)
       openTimerRef.current = null
     }
-    engineRef.current?.setDetailFocus(null, false)
+    engineRef.current?.setDetailFocus(null, false, 'close')
   }, [])
 
   useEffect(() => {
@@ -1243,26 +1335,42 @@ export const InfiniteMovieMenu = <T,>({
   }, [cancelDetailsFlow])
 
   const beginDetailsFlow = useCallback(
-    (item: InfiniteMovieMenuItem<T> | null) => {
+    (
+      item: InfiniteMovieMenuItem<T> | null,
+      motion: Extract<DetailMotion, 'fast' | 'slow'> = 'fast',
+    ) => {
       if (!item) return
 
+      const delayMs =
+        motion === 'slow'
+          ? DETAIL_WHEEL_OPEN_DELAY_MS
+          : DETAIL_CLICK_OPEN_DELAY_MS
       if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
       activeItemRef.current = item
       setActiveItem(item)
       onActiveItemChange(item)
-      engineRef.current?.setDetailFocus(item.id, true)
+      engineRef.current?.setDetailFocus(item.id, true, motion)
+      if (delayMs === 0) {
+        openTimerRef.current = null
+        onSelectItem(item)
+        return
+      }
       openTimerRef.current = window.setTimeout(() => {
         openTimerRef.current = null
         onSelectItem(item)
-      }, DETAIL_OPEN_DELAY_MS)
+      }, delayMs)
     },
     [onActiveItemChange, onSelectItem],
   )
 
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
+    const isDesktopWheel =
+      window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false
+    if (!isDesktopWheel) return
+
     if (event.deltaY < -10 && activeItemRef.current) {
       event.preventDefault()
-      beginDetailsFlow(activeItemRef.current)
+      beginDetailsFlow(activeItemRef.current, 'slow')
     }
 
     if (event.deltaY > 10 && openTimerRef.current) {
@@ -1271,17 +1379,77 @@ export const InfiniteMovieMenu = <T,>({
     }
   }
 
+  const handlePointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    pointerDownRef.current = {
+      moved: false,
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+    }
+    engineRef.current?.beginPointerDrag(
+      event.clientX,
+      event.clientY,
+      event.pointerId,
+    )
+    setIsHoldPrimed(true)
+  }
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
+    const pointerDown = pointerDownRef.current
+    if (!pointerDown) return
+
+    const dx = event.clientX - pointerDown.x
+    const dy = event.clientY - pointerDown.y
+    if (Math.hypot(dx, dy) > CLICK_MOVE_TOLERANCE_PX) {
+      pointerDown.moved = true
+      suppressNextClickRef.current = true
+    }
+    engineRef.current?.movePointerDrag(event.clientX, event.clientY)
+  }
+
+  const clearHoldState = useCallback(() => {
+    setIsHoldPrimed(false)
+  }, [])
+
+  const finishPointerInteraction = () => {
+    const pointerDown = pointerDownRef.current
+    if (pointerDown) engineRef.current?.endPointerDrag(pointerDown.pointerId)
+    if (pointerDown?.moved) suppressNextClickRef.current = true
+    pointerDownRef.current = null
+    clearHoldState()
+  }
+
   return (
-    <div className='warp-infinite-menu' onWheel={handleWheel}>
+    <div
+      className={cn('warp-infinite-menu', isHoldPrimed && 'is-hold-primed')}
+      onWheel={handleWheel}
+    >
       <canvas
         ref={canvasRef}
         className='warp-infinite-menu-canvas'
         aria-label='Infinite movie poster menu'
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerCancel={() => {
+          const pointerDown = pointerDownRef.current
+          if (pointerDown)
+            engineRef.current?.cancelPointerDrag(pointerDown.pointerId)
+          if (pointerDown?.moved) suppressNextClickRef.current = true
+          clearHoldState()
+          pointerDownRef.current = null
+        }}
+        onPointerUp={finishPointerInteraction}
         onClick={(event) => {
+          pointerDownRef.current = null
+          clearHoldState()
+          if (suppressNextClickRef.current) {
+            suppressNextClickRef.current = false
+            return
+          }
+
           const pickedItem =
-            engineRef.current?.pickItemAt(event.clientX, event.clientY) ??
-            activeItemRef.current
-          beginDetailsFlow(pickedItem)
+            engineRef.current?.pickItemAt(event.clientX, event.clientY) ?? null
+          beginDetailsFlow(pickedItem, 'fast')
         }}
       />
 
@@ -1291,7 +1459,7 @@ export const InfiniteMovieMenu = <T,>({
         <button
           type='button'
           className={cn('warp-focus-card', isMoving && 'is-moving')}
-          onClick={() => beginDetailsFlow(activeItem)}
+          onClick={() => beginDetailsFlow(activeItem, 'fast')}
         >
           <span>{activeItem.title}</span>
           <span>{activeItem.meta}</span>

@@ -12,20 +12,29 @@ import './styles.css'
 
 initTelemetry()
 
+const cleanUrl = (pathname = window.location.pathname || '/') => {
+  const cleanPathname = pathname === '/test' ? '/' : pathname
+  if (
+    window.location.pathname !== cleanPathname ||
+    window.location.search ||
+    window.location.hash
+  ) {
+    window.history.replaceState(null, '', cleanPathname)
+  }
+}
+
 window.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search)
   const disableUIOverrideParam = urlParams.get('disableUI')
+  const isCustomLinkImport = urlParams.has('customLinkBase64')
   if (window.location.pathname === '/test') {
-    window.history.replaceState(
-      null,
-      '',
-      `/${window.location.search}${window.location.hash}`,
-    )
+    cleanUrl('/')
   }
 
   const isDiscoveryRoute = window.location.pathname === '/'
 
   if (isDiscoveryRoute) {
+    cleanUrl('/')
     // Keep the discovery experience isolated from the Voroforce renderer.
     document.body.dataset.route = 'test-gallery'
     document.getElementById('voroforce')?.setAttribute('aria-hidden', 'true')
@@ -41,6 +50,10 @@ window.addEventListener('DOMContentLoaded', () => {
     )
     animateDocTitleSuffix()
     return
+  }
+
+  if (!isCustomLinkImport) {
+    cleanUrl()
   }
 
   if (!config.disableUI && !disableUIOverrideParam) {

@@ -8,7 +8,7 @@ import type { StoreState } from '../../store'
 import {
   DEFAULT_VOROFORCE_PRESET,
   type VOROFORCE_MODE,
-  VOROFORCE_PRESET,
+  type VOROFORCE_PRESET,
 } from '../consts'
 import type { VoroforceCell, VoroforceInstance } from '../types'
 import type { Film } from './films'
@@ -125,8 +125,15 @@ const handleCustomLinkParam = (
       userConfig.customLinks.push(customLink)
     }
     setUserConfig(userConfig)
-    window.history.replaceState({}, document.title, '/')
-  } catch (e) {}
+  } catch {
+    // Ignore malformed import links; the URL still gets cleaned below.
+  } finally {
+    window.history.replaceState(
+      {},
+      document.title,
+      window.location.pathname || '/',
+    )
+  }
 }
 
 export const getVoroforceConfig = (state: StoreState) => {
@@ -138,8 +145,6 @@ export const getVoroforceConfig = (state: StoreState) => {
     deviceClass,
   } = state
   const urlParams = new URLSearchParams(window.location.search)
-  const presetOverrideParam = urlParams.get('preset') as VOROFORCE_PRESET
-  const cellsOverrideParam = urlParams.get('cells')
   const customLinkBase64Param = urlParams.get('customLinkBase64')
   const isMobileRuntime =
     state.ua.getDevice().type === 'mobile' ||
@@ -147,10 +152,6 @@ export const getVoroforceConfig = (state: StoreState) => {
       window.matchMedia('(max-width: 767px)').matches)
 
   let preset = initialPreset
-  if (presetOverrideParam && VOROFORCE_PRESET[presetOverrideParam]) {
-    preset = presetOverrideParam
-  }
-
   if (!preset) preset = DEFAULT_VOROFORCE_PRESET
 
   let config = mergeConfigs(
@@ -198,21 +199,13 @@ export const getVoroforceConfig = (state: StoreState) => {
     ? randomCellSelection.count
     : config.cells
 
-  config.cells = cellsOverrideParam
-    ? clampRuntimeGridCellCount({
-        cells: Number.parseInt(cellsOverrideParam),
-        defaultCellLimit,
-        deviceClass,
-        isMobileRuntime,
-        renderProfileId: renderProfile.id,
-      })
-    : clampRuntimeGridCellCount({
-        cells: cellLimit ?? config.cells,
-        defaultCellLimit,
-        deviceClass,
-        isMobileRuntime,
-        renderProfileId: renderProfile.id,
-      })
+  config.cells = clampRuntimeGridCellCount({
+    cells: cellLimit ?? config.cells,
+    defaultCellLimit,
+    deviceClass,
+    isMobileRuntime,
+    renderProfileId: renderProfile.id,
+  })
 
   if ('devTools' in userConfig) {
     config.devTools.enabled = !!userConfig.devTools

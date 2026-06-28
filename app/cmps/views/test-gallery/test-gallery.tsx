@@ -6,7 +6,10 @@ import {
   useState,
 } from 'react'
 import { cn } from '../../../utils/tw'
-import { InfiniteMovieMenu } from './infinite-movie-menu'
+import {
+  InfiniteMovieMenu,
+  type InfiniteMovieMenuItem,
+} from './infinite-movie-menu'
 
 type RawMovie = Record<string, unknown>
 
@@ -22,14 +25,23 @@ type TestMovie = {
   rating: string
   countries: string
   posterUrl: string
+  fallbackPosterUrl?: string
 }
 
-type ViewMode = 'wall' | 'list'
+type ViewMode = 'wall' | 'list' | 'genres'
+type ListGrouping = 'year' | 'alpha'
 type LoadState = 'loading' | 'ready' | 'error'
+type GenreSummary = {
+  count: number
+  genre: string
+}
 
-const WALL_COLUMNS = 12
-const WALL_ROWS = 13
-const DATASET_SIZE = WALL_COLUMNS * WALL_ROWS
+const DATASET_FILE_COUNT = 5
+const INDEX_CATALOG_COUNT = 57294
+const LIST_WINDOW_SIZE = 10000
+const LOCAL_POSTER_COUNT = 216
+const GALLERY_WINDOW_SIZE = 500
+const TMDB_POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w342'
 
 const getText = (raw: RawMovie, key: string) => {
   const value = raw[key]
@@ -42,7 +54,7 @@ const getNumber = (raw: RawMovie, key: string) => {
   return Number.isFinite(value) ? value : 0
 }
 
-const splitList = (value: string, maxItems = 2) =>
+const splitList = (value: string, maxItems = Number.POSITIVE_INFINITY) =>
   value
     .split(',')
     .map((item) => item.trim())
@@ -54,31 +66,98 @@ const seededRandom = (seed: number) => {
   return value - Math.floor(value)
 }
 
-const shuffleMovies = (movies: TestMovie[]) =>
+const getYearNumber = (movie: TestMovie) => {
+  const year = Number(movie.year)
+  return Number.isFinite(year) ? year : 0
+}
+
+export const getGenreOverlap = (movie: TestMovie, selectedGenres: string[]) => {
+  if (!selectedGenres.length) return 0
+  const movieGenres = new Set(movie.genres)
+  return selectedGenres.filter((genre) => movieGenres.has(genre)).length
+}
+
+export const filterMoviesByGenres = (
+  movies: TestMovie[],
+  selectedGenres: string[],
+) => {
+  if (!selectedGenres.length) return movies
+  return movies.filter((movie) => getGenreOverlap(movie, selectedGenres) > 0)
+}
+
+export const getGalleryWindow = (
+  movies: TestMovie[],
+  selectedGenres: string[],
+  limit = GALLERY_WINDOW_SIZE,
+) =>
   [...movies]
-    .map((movie, index) => ({ movie, sort: seededRandom(index + movie.rank) }))
-    .sort((a, b) => a.sort - b.sort)
+    .map((movie, index) => ({
+      movie,
+      overlap: getGenreOverlap(movie, selectedGenres),
+      sort: seededRandom(index + movie.rank + selectedGenres.length * 97),
+    }))
+    .sort(
+      (a, b) =>
+        b.overlap - a.overlap || b.movie.rank - a.movie.rank || a.sort - b.sort,
+    )
+    .slice(0, limit)
     .map(({ movie }) => movie)
 
-const sortMoviesForList = (movies: TestMovie[]) =>
+export const sortMoviesForList = (
+  movies: TestMovie[],
+  grouping: ListGrouping,
+) =>
   [...movies].sort((movieA, movieB) => {
-    const yearSort = movieB.year.localeCompare(movieA.year)
-    return yearSort || movieA.title.localeCompare(movieB.title)
+    if (grouping === 'alpha') {
+      return (
+        movieA.title.localeCompare(movieB.title) ||
+        getYearNumber(movieA) - getYearNumber(movieB)
+      )
+    }
+
+    return (
+      getYearNumber(movieA) - getYearNumber(movieB) ||
+      movieA.title.localeCompare(movieB.title)
+    )
   })
 
-const groupMoviesByYear = (movies: TestMovie[]) =>
+export const groupMoviesByYear = (movies: TestMovie[]) =>
   movies.reduce<Record<string, TestMovie[]>>((groups, movie) => {
     const year = movie.year || '----'
     groups[year] = [...(groups[year] ?? []), movie]
     return groups
   }, {})
 
+export const groupMoviesAlphabetically = (movies: TestMovie[]) =>
+  movies.reduce<Record<string, TestMovie[]>>((groups, movie) => {
+    const letter = movie.title.charAt(0).toUpperCase() || '#'
+    const key = /[A-Z]/.test(letter) ? letter : '#'
+    groups[key] = [...(groups[key] ?? []), movie]
+    return groups
+  }, {})
+
+const getGenreSummaries = (movies: TestMovie[]): GenreSummary[] => {
+  const counts = movies.reduce<Record<string, number>>((summary, movie) => {
+    movie.genres.forEach((genre) => {
+      summary[genre] = (summary[genre] ?? 0) + 1
+    })
+    return summary
+  }, {})
+
+  return Object.entries(counts)
+    .map(([genre, count]) => ({ genre, count }))
+    .sort((a, b) => b.count - a.count || a.genre.localeCompare(b.genre))
+}
+
 const mapMovie = (raw: RawMovie, index: number): TestMovie => {
   const rating = getNumber(raw, 'vote_average')
   const year = getText(raw, 'release_year') || '----'
+  const rawId = getText(raw, 'id')
+  const fallbackPosterUrl = `/media/single/${index % LOCAL_POSTER_COUNT}.jpg`
+  const posterPath = getText(raw, 'poster_path')
 
   return {
-    id: getText(raw, 'id') || String(index),
+    id: rawId ? `${index}-${rawId}` : String(index),
     rank: index + 1,
     title: getText(raw, 'title') || `Untitled ${index + 1}`,
     tagline: getText(raw, 'tagline'),
@@ -89,17 +168,24 @@ const mapMovie = (raw: RawMovie, index: number): TestMovie => {
       getText(raw, 'time_str') || `${getNumber(raw, 'runtime_minutes')}m`,
     rating: rating ? rating.toFixed(1) : 'N/A',
     countries: splitList(getText(raw, 'production_countries'), 1).join(', '),
-    posterUrl: `/media/single/${index}.jpg`,
+    posterUrl: posterPath
+      ? `${TMDB_POSTER_BASE_URL}${posterPath}`
+      : fallbackPosterUrl,
+    fallbackPosterUrl,
   }
 }
 
 export const TestGalleryApp = () => {
   const [movies, setMovies] = useState<TestMovie[]>([])
   const [mode, setMode] = useState<ViewMode>('wall')
+  const [listGrouping, setListGrouping] = useState<ListGrouping>('year')
   const [activeMovieId, setActiveMovieId] = useState<string | null>(null)
   const [detailsMovieId, setDetailsMovieId] = useState<string | null>(null)
-  const [activeGenre, setActiveGenre] = useState<string | null>(null)
+  const [watchMovieId, setWatchMovieId] = useState<string | null>(null)
+  const [selectedGenres, setSelectedGenres] = useState<string[]>([])
   const [filterOpen, setFilterOpen] = useState(false)
+  const [aboutOpen, setAboutOpen] = useState(false)
+  const [aboutMaximized, setAboutMaximized] = useState(false)
   const [loadState, setLoadState] = useState<LoadState>('loading')
   const [errorMessage, setErrorMessage] = useState('')
   const [timeLabel, setTimeLabel] = useState('')
@@ -107,20 +193,24 @@ export const TestGalleryApp = () => {
   useEffect(() => {
     let cancelled = false
 
-    fetch('/json/0.json')
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`Could not load movie data (${response.status})`)
-        }
-        return response.json() as Promise<RawMovie[]>
-      })
-      .then((data) => {
+    Promise.all(
+      Array.from({ length: DATASET_FILE_COUNT }, (_, index) =>
+        fetch(`/json/${index}.json`).then((response) => {
+          if (!response.ok) {
+            throw new Error(`Could not load movie data (${response.status})`)
+          }
+          return response.json() as Promise<RawMovie[]>
+        }),
+      ),
+    )
+      .then((datasets) => {
         if (cancelled) return
-        const nextMovies = data
-          .slice(0, DATASET_SIZE)
-          .map((movie, index) => mapMovie(movie, index))
+        const nextMovies = datasets
+          .flat()
+          .slice(0, LIST_WINDOW_SIZE)
+          .map(mapMovie)
         setMovies(nextMovies)
-        setActiveMovieId(shuffleMovies(nextMovies)[0]?.id ?? null)
+        setActiveMovieId(nextMovies[0]?.id ?? null)
         setLoadState('ready')
       })
       .catch((error: unknown) => {
@@ -152,17 +242,17 @@ export const TestGalleryApp = () => {
     return () => window.clearInterval(timer)
   }, [])
 
-  const allGenres = useMemo(
-    () => Array.from(new Set(movies.flatMap((movie) => movie.genres))).sort(),
-    [movies],
+  const genreSummaries = useMemo(() => getGenreSummaries(movies), [movies])
+
+  const filteredMovies = useMemo(
+    () => filterMoviesByGenres(movies, selectedGenres),
+    [movies, selectedGenres],
   )
 
-  const visibleMovies = useMemo(() => {
-    const filteredMovies = activeGenre
-      ? movies.filter((movie) => movie.genres.includes(activeGenre))
-      : movies
-    return shuffleMovies(filteredMovies).slice(0, DATASET_SIZE)
-  }, [activeGenre, movies])
+  const visibleMovies = useMemo(
+    () => getGalleryWindow(filteredMovies, selectedGenres),
+    [filteredMovies, selectedGenres],
+  )
 
   useEffect(() => {
     if (
@@ -174,25 +264,41 @@ export const TestGalleryApp = () => {
   }, [activeMovieId, visibleMovies])
 
   const listMovies = useMemo(
-    () => sortMoviesForList(visibleMovies),
-    [visibleMovies],
+    () =>
+      sortMoviesForList(filteredMovies, listGrouping).slice(
+        0,
+        LIST_WINDOW_SIZE,
+      ),
+    [filteredMovies, listGrouping],
   )
 
   const activeMovie = useMemo(
     () =>
-      visibleMovies.find((movie) => movie.id === activeMovieId) ??
+      movies.find((movie) => movie.id === activeMovieId) ??
       visibleMovies[0] ??
       null,
-    [activeMovieId, visibleMovies],
+    [activeMovieId, movies, visibleMovies],
   )
 
   const detailsMovie = useMemo(
-    () =>
-      visibleMovies.find((movie) => movie.id === detailsMovieId) ??
-      movies.find((movie) => movie.id === detailsMovieId) ??
-      null,
-    [detailsMovieId, movies, visibleMovies],
+    () => movies.find((movie) => movie.id === detailsMovieId) ?? null,
+    [detailsMovieId, movies],
   )
+
+  const watchMovie = useMemo(
+    () => movies.find((movie) => movie.id === watchMovieId) ?? null,
+    [movies, watchMovieId],
+  )
+
+  const toggleGenre = useCallback((genre: string) => {
+    setSelectedGenres((currentGenres) =>
+      currentGenres.includes(genre)
+        ? currentGenres.filter((currentGenre) => currentGenre !== genre)
+        : [...currentGenres, genre],
+    )
+  }, [])
+
+  const clearGenres = useCallback(() => setSelectedGenres([]), [])
 
   const handleSelectMovie = useCallback((movie: TestMovie) => {
     setActiveMovieId(movie.id)
@@ -203,16 +309,34 @@ export const TestGalleryApp = () => {
     setDetailsMovieId(movie.id)
   }, [])
 
+  const handleOpenWatchLinks = useCallback((movie: TestMovie) => {
+    setActiveMovieId(movie.id)
+    setWatchMovieId(movie.id)
+    setAboutOpen(false)
+    setFilterOpen(false)
+  }, [])
+
+  const handlePickRandomMovie = useCallback(() => {
+    const pool = filteredMovies.length ? filteredMovies : movies
+    const movie = pool[Math.floor(Math.random() * Math.max(pool.length, 1))]
+    if (!movie) return
+    setMode('wall')
+    setFilterOpen(false)
+    setAboutOpen(false)
+    handleOpenMovie(movie)
+  }, [filteredMovies, handleOpenMovie, movies])
+
   useEffect(() => {
-    if (!detailsMovieId) return
+    if (!detailsMovieId && !watchMovieId) return
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setDetailsMovieId(null)
+      if (event.key === 'Escape') setWatchMovieId(null)
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [detailsMovieId])
+  }, [detailsMovieId, watchMovieId])
 
   return (
     <main
@@ -233,42 +357,119 @@ export const TestGalleryApp = () => {
           onOpenMovie={handleOpenMovie}
           onSelectMovie={handleSelectMovie}
         />
-      ) : (
+      ) : null}
+
+      {mode === 'list' ? (
         <WarpList
           activeMovieId={activeMovie?.id ?? null}
           errorMessage={errorMessage}
+          grouping={listGrouping}
           loadState={loadState}
           movies={listMovies}
+          totalMovieCount={INDEX_CATALOG_COUNT}
+          onGroupingChange={setListGrouping}
           onOpenMovie={handleOpenMovie}
+          onPickRandomMovie={handlePickRandomMovie}
           onSelectMovie={handleSelectMovie}
         />
-      )}
+      ) : null}
+
+      {mode === 'genres' ? (
+        <GenresView
+          genres={genreSummaries}
+          resultCount={filteredMovies.length}
+          selectedGenres={selectedGenres}
+          onBackToGallery={() => setMode('wall')}
+          onClear={clearGenres}
+          onToggleGenre={toggleGenre}
+        />
+      ) : null}
 
       <WarpChrome
+        aboutOpen={aboutOpen}
         activeMovie={activeMovie}
         mode={mode}
-        movieCount={visibleMovies.length}
+        movieCount={INDEX_CATALOG_COUNT}
+        selectedGenreCount={selectedGenres.length}
         timeLabel={timeLabel}
-        onModeChange={setMode}
+        onOpenAbout={() => {
+          setAboutOpen(true)
+          setFilterOpen(false)
+        }}
+        onOpenActiveMovie={() => {
+          if (activeMovie) handleOpenWatchLinks(activeMovie)
+        }}
+        onOpenGenres={() => {
+          setMode('genres')
+          setAboutOpen(false)
+          setFilterOpen(false)
+        }}
+        onResetGallery={() => {
+          clearGenres()
+          setDetailsMovieId(null)
+          setWatchMovieId(null)
+          setFilterOpen(false)
+          setAboutOpen(false)
+          setMode('wall')
+        }}
+        onShowWall={() => {
+          setFilterOpen(false)
+          setAboutOpen(false)
+          setMode('wall')
+        }}
+        onModeChange={(nextMode) => {
+          setAboutOpen(false)
+          setFilterOpen(false)
+          setMode(nextMode)
+        }}
       />
 
-      <button
-        type='button'
-        className='warp-filter-button'
-        aria-expanded={filterOpen}
-        onClick={() => setFilterOpen((isOpen) => !isOpen)}
-      >
-        Filter
-      </button>
+      <div className='warp-filter-actions'>
+        {filterOpen && selectedGenres.length ? (
+          <button
+            type='button'
+            className='warp-filter-reset'
+            aria-label='Reset filters'
+            onClick={clearGenres}
+          >
+            Reset
+          </button>
+        ) : null}
+        <button
+          type='button'
+          className='warp-filter-button'
+          aria-expanded={filterOpen}
+          onClick={() => setFilterOpen((isOpen) => !isOpen)}
+        >
+          Filter
+          {selectedGenres.length ? <span>{selectedGenres.length}</span> : null}
+        </button>
+      </div>
 
       {filterOpen ? (
         <FilterPanel
-          activeGenre={activeGenre}
-          genres={allGenres}
-          onSelectGenre={(genre) => {
-            setActiveGenre(genre)
-            setFilterOpen(false)
-          }}
+          genres={genreSummaries}
+          resultCount={filteredMovies.length}
+          selectedGenres={selectedGenres}
+          onClear={clearGenres}
+          onToggleGenre={toggleGenre}
+        />
+      ) : null}
+
+      {aboutOpen ? (
+        <AboutDrawer
+          maximized={aboutMaximized}
+          onClose={() => setAboutOpen(false)}
+          onToggleMaximized={() =>
+            setAboutMaximized((isMaximized) => !isMaximized)
+          }
+        />
+      ) : null}
+
+      {watchMovie ? (
+        <WatchLinksDialog
+          movie={watchMovie}
+          onClose={() => setWatchMovieId(null)}
         />
       ) : null}
 
@@ -277,7 +478,7 @@ export const TestGalleryApp = () => {
           movie={detailsMovie}
           onClose={() => setDetailsMovieId(null)}
           onSelectGenre={(genre) => {
-            setActiveGenre(genre)
+            setSelectedGenres([genre])
             setDetailsMovieId(null)
             setMode('wall')
           }}
@@ -304,13 +505,15 @@ const WarpWall = ({
   onOpenMovie,
   onSelectMovie,
 }: WarpWallProps) => {
-  const menuItems = useMemo(
+  const menuItems = useMemo<InfiniteMovieMenuItem<TestMovie>[]>(
     () =>
       movies.map((movie) => ({
         id: movie.id,
+        fallbackImage: movie.fallbackPosterUrl,
         image: movie.posterUrl,
         title: movie.title,
-        description: movie.genres.join(' / ') || movie.overview || 'Movie',
+        description:
+          movie.genres.slice(0, 2).join(' / ') || movie.overview || 'Movie',
         meta: `${movie.year} / ${movie.rating} / ${movie.runtime}`,
         payload: movie,
       })),
@@ -353,36 +556,77 @@ const WarpWall = ({
 type WarpListProps = {
   activeMovieId: string | null
   errorMessage: string
+  grouping: ListGrouping
   loadState: LoadState
   movies: TestMovie[]
+  totalMovieCount: number
+  onGroupingChange: (grouping: ListGrouping) => void
   onOpenMovie: (movie: TestMovie) => void
+  onPickRandomMovie: () => void
   onSelectMovie: (movie: TestMovie) => void
 }
 
 const WarpList = ({
   activeMovieId,
   errorMessage,
+  grouping,
   loadState,
   movies,
+  totalMovieCount,
+  onGroupingChange,
   onOpenMovie,
+  onPickRandomMovie,
   onSelectMovie,
 }: WarpListProps) => {
   const groupedMovies = useMemo(() => {
-    const groups = groupMoviesByYear(movies)
-    return Object.entries(groups).sort(([yearA], [yearB]) =>
-      yearB.localeCompare(yearA),
+    const groups =
+      grouping === 'alpha'
+        ? groupMoviesAlphabetically(movies)
+        : groupMoviesByYear(movies)
+    return Object.entries(groups).sort(([groupA], [groupB]) =>
+      grouping === 'alpha'
+        ? groupA.localeCompare(groupB)
+        : Number(groupA) - Number(groupB),
     )
-  }, [movies])
+  }, [grouping, movies])
 
   return (
     <section className='warp-list' aria-label='Movie list view'>
       <header className='warp-list-heading'>
-        <h1>Movie index</h1>
-        <p>
-          {loadState === 'ready'
-            ? `${movies.length} titles indexed`
-            : loadState}
-        </p>
+        <div className='warp-list-sort' aria-label='Movie index grouping'>
+          <button
+            type='button'
+            className={cn(grouping === 'year' && 'is-active')}
+            aria-pressed={grouping === 'year'}
+            onClick={() => onGroupingChange('year')}
+          >
+            By year
+          </button>
+          <button
+            type='button'
+            className={cn(grouping === 'alpha' && 'is-active')}
+            aria-pressed={grouping === 'alpha'}
+            onClick={() => onGroupingChange('alpha')}
+          >
+            Alphabetical
+          </button>
+        </div>
+        <div className='warp-list-title'>
+          <h1>Movie index</h1>
+          <p>
+            {loadState === 'ready'
+              ? `${totalMovieCount.toLocaleString()} movies in index`
+              : loadState}
+          </p>
+        </div>
+        <button
+          type='button'
+          className='warp-random-cta'
+          disabled={!movies.length}
+          onClick={onPickRandomMovie}
+        >
+          Pick random movie
+        </button>
       </header>
 
       {loadState === 'error' ? (
@@ -407,7 +651,21 @@ const WarpList = ({
                   onMouseEnter={() => onSelectMovie(movie)}
                 >
                   <span className='warp-list-row-poster' aria-hidden='true'>
-                    <img src={movie.posterUrl} alt='' loading='lazy' />
+                    <img
+                      src={movie.posterUrl}
+                      alt=''
+                      loading='lazy'
+                      onError={(event) => {
+                        if (!movie.fallbackPosterUrl) return
+                        if (
+                          event.currentTarget.src.endsWith(
+                            movie.fallbackPosterUrl,
+                          )
+                        )
+                          return
+                        event.currentTarget.src = movie.fallbackPosterUrl
+                      }}
+                    />
                   </span>
                   <span className='warp-list-row-main'>
                     <span className='warp-list-row-title'>{movie.title}</span>
@@ -417,11 +675,11 @@ const WarpList = ({
                     </span>
                   </span>
                   <span className='warp-list-row-genres'>
-                    {(movie.genres.length ? movie.genres : ['Movie']).map(
-                      (genre) => (
+                    {(movie.genres.length ? movie.genres : ['Movie'])
+                      .slice(0, 3)
+                      .map((genre) => (
                         <span key={genre}>{genre}</span>
-                      ),
-                    )}
+                      ))}
                   </span>
                   <span className='warp-list-row-rating'>{movie.rating}</span>
                 </button>
@@ -435,51 +693,70 @@ const WarpList = ({
 }
 
 type WarpChromeProps = {
+  aboutOpen: boolean
   activeMovie: TestMovie | null
   mode: ViewMode
   movieCount: number
+  selectedGenreCount: number
   timeLabel: string
+  onOpenAbout: () => void
+  onOpenActiveMovie: () => void
+  onOpenGenres: () => void
+  onResetGallery: () => void
+  onShowWall: () => void
   onModeChange: (mode: ViewMode) => void
 }
 
 const WarpChrome = ({
+  aboutOpen,
   activeMovie,
   mode,
   movieCount,
+  selectedGenreCount,
   timeLabel,
+  onOpenAbout,
+  onOpenActiveMovie,
+  onOpenGenres,
+  onResetGallery,
+  onShowWall,
   onModeChange,
 }: WarpChromeProps) => (
   <>
     <header className='warp-topbar'>
-      <a href='/' className='warp-mark' aria-label='What to Watch home'>
-        <span className='sr-only'>What to Watch home</span>
+      <button
+        type='button'
+        className='warp-mark'
+        aria-label='Reset gallery'
+        onClick={onResetGallery}
+      >
+        <span className='sr-only'>Reset gallery</span>
         <svg viewBox='0 0 64 78' aria-hidden='true'>
           <path d='M33.5 4.5c8.2 1.4 17.8 14.4 21.3 28.1 3.7 14.1-.9 30.2-9.8 35.7-2.9 1.8-5.3-3.9-8.5-2.5-4.4 2-7 7.1-10.8 5.9-3.5-1.1-3.2-7.2-6.3-8.7-4.1-2-8.9 2.7-10.4-.6C4.7 53.8 5.7 35.6 11.5 23 16.6 11.8 25.3 3.1 33.5 4.5Z' />
           <path d='M24.2 31.7c.5-4.1 3.3-7.2 7-7.7 5.2-.7 10.3 4.5 11.2 11.4' />
         </svg>
-      </a>
-      <div className='warp-sound'>
-        <span />
-        Sound [Off]
-      </div>
+      </button>
       <p className='warp-manifesto'>
         What to Watch is a movie-led discovery wall built for indecisive nights.
       </p>
       <div className='warp-clock'>
-        <strong>{timeLabel || '--:--'} GMT+1</strong>
-        <span>London, UK</span>
+        <strong>{timeLabel || '--:--'} WAT</strong>
         <span>Lagos, NG</span>
       </div>
-      <a className='warp-cta' href='/'>
+      <button
+        type='button'
+        className='warp-cta'
+        disabled={!activeMovie}
+        onClick={onOpenActiveMovie}
+      >
         Let&apos;s Watch
-      </a>
+      </button>
     </header>
 
     <div className='warp-active-peek' aria-live='polite'>
       <span>{activeMovie?.title ?? 'Loading'}</span>
       <span>
         {activeMovie
-          ? `${activeMovie.year} / ${activeMovie.rating} / ${movieCount} loaded`
+          ? `${activeMovie.year} / ${activeMovie.rating} / ${movieCount} indexed`
           : `${movieCount} loading`}
       </span>
     </div>
@@ -487,7 +764,7 @@ const WarpChrome = ({
     <nav className='warp-mode-toggle' aria-label='View mode'>
       <button
         type='button'
-        aria-label='Warp Wall'
+        aria-label='Gallery'
         aria-pressed={mode === 'wall'}
         onClick={() => onModeChange('wall')}
       >
@@ -495,7 +772,7 @@ const WarpChrome = ({
       </button>
       <button
         type='button'
-        aria-label='List view'
+        aria-label='Movie index'
         aria-pressed={mode === 'list'}
         onClick={() => onModeChange('list')}
       >
@@ -503,47 +780,236 @@ const WarpChrome = ({
       </button>
     </nav>
 
-    <nav className='warp-main-nav' aria-label='Test navigation'>
-      <a className='is-active' href='/'>
+    <nav className='warp-main-nav' aria-label='Gallery navigation'>
+      <button
+        type='button'
+        className={cn(mode === 'wall' && !aboutOpen && 'is-active')}
+        aria-pressed={mode === 'wall' && !aboutOpen}
+        onClick={onShowWall}
+      >
         Watch
-      </a>
-      <a href='/'>About</a>
-      <a href='/'>Genres</a>
+      </button>
+      <button
+        type='button'
+        className={cn(aboutOpen && 'is-active')}
+        aria-expanded={aboutOpen}
+        onClick={onOpenAbout}
+      >
+        About
+      </button>
+      <button
+        type='button'
+        className={cn(mode === 'genres' && 'is-active')}
+        aria-pressed={mode === 'genres'}
+        onClick={onOpenGenres}
+      >
+        Genres
+        {selectedGenreCount ? <span>{selectedGenreCount}</span> : null}
+      </button>
     </nav>
   </>
 )
 
 type FilterPanelProps = {
-  activeGenre: string | null
-  genres: string[]
-  onSelectGenre: (genre: string | null) => void
+  genres: GenreSummary[]
+  resultCount: number
+  selectedGenres: string[]
+  onClear: () => void
+  onToggleGenre: (genre: string) => void
 }
 
 const FilterPanel = ({
-  activeGenre,
   genres,
-  onSelectGenre,
+  resultCount,
+  selectedGenres,
+  onClear,
+  onToggleGenre,
 }: FilterPanelProps) => (
   <aside className='warp-filter-panel'>
-    <p>Filter by genre</p>
+    <div className='warp-filter-panel-heading'>
+      <p>Stack filters</p>
+      <span>{resultCount} matches</span>
+    </div>
     <button
       type='button'
-      className={cn(!activeGenre && 'is-active')}
-      onClick={() => onSelectGenre(null)}
+      className={cn(!selectedGenres.length && 'is-active')}
+      onClick={onClear}
     >
       All movies
     </button>
-    {genres.map((genre) => (
+    {genres.map(({ genre, count }) => (
       <button
         type='button'
-        className={cn(activeGenre === genre && 'is-active')}
+        className={cn(selectedGenres.includes(genre) && 'is-active')}
         key={genre}
-        onClick={() => onSelectGenre(genre)}
+        aria-pressed={selectedGenres.includes(genre)}
+        onClick={() => onToggleGenre(genre)}
       >
-        {genre}
+        <span>{genre}</span>
+        <span>{count}</span>
       </button>
     ))}
   </aside>
+)
+
+type GenresViewProps = {
+  genres: GenreSummary[]
+  resultCount: number
+  selectedGenres: string[]
+  onBackToGallery: () => void
+  onClear: () => void
+  onToggleGenre: (genre: string) => void
+}
+
+const GenresView = ({
+  genres,
+  resultCount,
+  selectedGenres,
+  onBackToGallery,
+  onClear,
+  onToggleGenre,
+}: GenresViewProps) => (
+  <section className='warp-genres-view' aria-label='Genre curation'>
+    <header>
+      <div>
+        <h1>Genres</h1>
+        <p>
+          Select one or more lanes. The gallery ranks exact overlap first, then
+          keeps the wall full from the wider matching set.
+        </p>
+      </div>
+      <div className='warp-genres-actions'>
+        <button
+          type='button'
+          onClick={onClear}
+          disabled={!selectedGenres.length}
+        >
+          Clear
+        </button>
+        <button type='button' onClick={onBackToGallery}>
+          Back to gallery
+        </button>
+      </div>
+    </header>
+    <div className='warp-genres-summary'>
+      <span>{selectedGenres.length || 'All'} selected</span>
+      <span>{resultCount} matching movies</span>
+    </div>
+    <div className='warp-genres-grid'>
+      {genres.map(({ genre, count }) => (
+        <button
+          type='button'
+          key={genre}
+          className={cn(selectedGenres.includes(genre) && 'is-active')}
+          aria-pressed={selectedGenres.includes(genre)}
+          onClick={() => onToggleGenre(genre)}
+        >
+          <span>{genre}</span>
+          <span>{count}</span>
+        </button>
+      ))}
+    </div>
+  </section>
+)
+
+type AboutDrawerProps = {
+  maximized: boolean
+  onClose: () => void
+  onToggleMaximized: () => void
+}
+
+const AboutDrawer = ({
+  maximized,
+  onClose,
+  onToggleMaximized,
+}: AboutDrawerProps) => (
+  <aside className={cn('warp-about-drawer', maximized && 'is-maximized')}>
+    <button
+      type='button'
+      className='warp-about-handle'
+      aria-label={maximized ? 'Minimize about drawer' : 'Maximize about drawer'}
+      onClick={onToggleMaximized}
+    >
+      <span />
+    </button>
+    <div className='warp-about-copy'>
+      <p className='warp-about-kicker'>About the gallery</p>
+      <h2>One wall, many ways in.</h2>
+      <p>
+        This is a browsing surface for finding something to watch by feel:
+        rotate the globe, tap a title for detail, or curate a genre lane before
+        diving back into the gallery.
+      </p>
+      <p>
+        Movie metadata and poster imagery are provided for discovery and
+        prototype evaluation. Ratings, runtimes, years, countries, genres, and
+        summaries can be incomplete or stale, so treat them as guidance rather
+        than an editorial verdict.
+      </p>
+      <div className='warp-about-actions'>
+        <button type='button' onClick={onToggleMaximized}>
+          {maximized ? 'Minimize' : 'Maximize'}
+        </button>
+        <button type='button' onClick={onClose}>
+          Close
+        </button>
+      </div>
+    </div>
+  </aside>
+)
+
+const WATCH_LINKS = [
+  { label: 'Netflix', meta: 'Subscription' },
+  { label: 'Prime Video', meta: 'Rent or buy' },
+  { label: 'Apple TV', meta: 'Rent or buy' },
+  { label: 'YouTube', meta: 'Trailer' },
+]
+
+type WatchLinksDialogProps = {
+  movie: TestMovie
+  onClose: () => void
+}
+
+const WatchLinksDialog = ({ movie, onClose }: WatchLinksDialogProps) => (
+  <section
+    className='warp-watch-layer'
+    aria-label={`${movie.title} watch links`}
+  >
+    <button
+      type='button'
+      className='warp-watch-backdrop'
+      aria-label='Close watch links'
+      onClick={onClose}
+    />
+    <dialog
+      className='warp-watch-card'
+      aria-label={`${movie.title} watch options`}
+      aria-modal='true'
+      open
+    >
+      <button
+        type='button'
+        className='warp-watch-close'
+        aria-label='Close watch links'
+        onClick={onClose}
+      >
+        Close
+      </button>
+      <p className='warp-watch-kicker'>Watch options</p>
+      <h2>{movie.title}</h2>
+      <p className='warp-watch-meta'>
+        {movie.year} / {movie.runtime} / {movie.countries || 'Cinema'}
+      </p>
+      <div className='warp-watch-links'>
+        {WATCH_LINKS.map((link) => (
+          <button type='button' key={link.label} disabled>
+            <span>{link.label}</span>
+            <span>{link.meta}</span>
+          </button>
+        ))}
+      </div>
+    </dialog>
+  </section>
 )
 
 type MovieDetailsCardProps = {
@@ -558,7 +1024,9 @@ const MovieDetailsCard = ({
   onSelectGenre,
 }: MovieDetailsCardProps) => {
   const handleWheel = (event: WheelEvent<HTMLElement>) => {
-    if (event.deltaY > 10) onClose()
+    const isDesktopWheel =
+      window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false
+    if (isDesktopWheel && event.deltaY > 10) onClose()
   }
 
   return (
@@ -583,7 +1051,16 @@ const MovieDetailsCard = ({
           Close
         </button>
         <div className='warp-details-poster'>
-          <img src={movie.posterUrl} alt='' />
+          <img
+            src={movie.posterUrl}
+            alt=''
+            onError={(event) => {
+              if (!movie.fallbackPosterUrl) return
+              if (event.currentTarget.src.endsWith(movie.fallbackPosterUrl))
+                return
+              event.currentTarget.src = movie.fallbackPosterUrl
+            }}
+          />
         </div>
         <div className='warp-details-copy'>
           <p className='warp-details-kicker'>
