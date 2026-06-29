@@ -34,6 +34,8 @@ describe('test gallery filtering helpers', () => {
     movie('2', 'Before Sunrise', '1995', ['Romance', 'Drama'], 2),
     movie('3', 'Only Lovers Left Alive', '2013', ['Horror', 'Romance'], 3),
     movie('4', 'Zodiac', '2007', ['Crime', 'Drama'], 4),
+    movie('5', '分手大师', '2014', ['Romance', 'Comedy'], 5),
+    movie('6', '[Rec]', '2007', ['Horror'], 6),
   ]
 
   it('uses OR matching for stacked genre filters', () => {
@@ -50,8 +52,17 @@ describe('test gallery filtering helpers', () => {
   })
 
   it('sorts list mode chronologically or alphabetically', () => {
+    expect(
+      sortMoviesForList(movies, 'year').map((item) => item.title),
+    ).toContain('分手大师')
     expect(sortMoviesForList(movies, 'year')[0].title).toBe('Before Sunrise')
     expect(sortMoviesForList(movies, 'alpha')[0].title).toBe('A Quiet Place')
+    expect(
+      sortMoviesForList(movies, 'alpha').map((item) => item.title),
+    ).not.toContain('分手大师')
+    expect(
+      sortMoviesForList(movies, 'alpha').map((item) => item.title),
+    ).not.toContain('[Rec]')
   })
 
   it('groups list mode by year or title initial', () => {

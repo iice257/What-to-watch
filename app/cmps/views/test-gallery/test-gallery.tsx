@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import { cn } from '../../../utils/tw'
@@ -40,7 +41,7 @@ const DATASET_FILE_COUNT = 5
 const INDEX_CATALOG_COUNT = 57294
 const LIST_WINDOW_SIZE = 10000
 const LOCAL_POSTER_COUNT = 216
-const GALLERY_WINDOW_SIZE = 500
+const GALLERY_WINDOW_SIZE = 1000
 const TMDB_POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w342'
 
 const getText = (raw: RawMovie, key: string) => {
@@ -70,6 +71,20 @@ const getYearNumber = (movie: TestMovie) => {
   const year = Number(movie.year)
   return Number.isFinite(year) ? year : 0
 }
+
+const formatRuntime = (runtime: string) => {
+  const value = runtime.trim()
+  if (!value || value === '0' || value === '0:00' || value === '0m') return '-'
+  return value
+}
+
+const formatMovieMeta = (movie: TestMovie) =>
+  `Year: ${movie.year && movie.year !== '----' ? movie.year : '-'} / Rating: ${
+    movie.rating && movie.rating !== 'N/A' ? movie.rating : '-'
+  } / Hour: ${formatRuntime(movie.runtime)}`
+
+const hasLatinLeadingTitle = (movie: TestMovie) =>
+  /^[A-Za-z]/.test(movie.title.trim())
 
 export const getGenreOverlap = (movie: TestMovie, selectedGenres: string[]) => {
   if (!selectedGenres.length) return 0
@@ -106,8 +121,11 @@ export const getGalleryWindow = (
 export const sortMoviesForList = (
   movies: TestMovie[],
   grouping: ListGrouping,
-) =>
-  [...movies].sort((movieA, movieB) => {
+) => {
+  const sortableMovies =
+    grouping === 'alpha' ? movies.filter(hasLatinLeadingTitle) : movies
+
+  return [...sortableMovies].sort((movieA, movieB) => {
     if (grouping === 'alpha') {
       return (
         movieA.title.localeCompare(movieB.title) ||
@@ -120,6 +138,7 @@ export const sortMoviesForList = (
       movieA.title.localeCompare(movieB.title)
     )
   })
+}
 
 export const groupMoviesByYear = (movies: TestMovie[]) =>
   movies.reduce<Record<string, TestMovie[]>>((groups, movie) => {
@@ -316,15 +335,12 @@ export const TestGalleryApp = () => {
     setFilterOpen(false)
   }, [])
 
-  const handlePickRandomMovie = useCallback(() => {
-    const pool = filteredMovies.length ? filteredMovies : movies
-    const movie = pool[Math.floor(Math.random() * Math.max(pool.length, 1))]
-    if (!movie) return
-    setMode('wall')
+  const handlePickRandomMovie = useCallback((movie: TestMovie) => {
+    setActiveMovieId(movie.id)
     setFilterOpen(false)
     setAboutOpen(false)
-    handleOpenMovie(movie)
-  }, [filteredMovies, handleOpenMovie, movies])
+    setDetailsMovieId(null)
+  }, [])
 
   useEffect(() => {
     if (!detailsMovieId && !watchMovieId) return
@@ -341,6 +357,7 @@ export const TestGalleryApp = () => {
   return (
     <main
       className='phantom-test-shell warp-shell min-h-dvh overflow-hidden bg-black text-white'
+      data-mode={mode}
       onMouseMove={(event) => {
         const x = event.clientX / Math.max(window.innerWidth, 1) - 0.5
         const y = event.clientY / Math.max(window.innerHeight, 1) - 0.5
@@ -514,7 +531,7 @@ const WarpWall = ({
         title: movie.title,
         description:
           movie.genres.slice(0, 2).join(' / ') || movie.overview || 'Movie',
-        meta: `${movie.year} / ${movie.rating} / ${movie.runtime}`,
+        meta: formatMovieMeta(movie),
         payload: movie,
       })),
     [movies],
@@ -562,7 +579,7 @@ type WarpListProps = {
   totalMovieCount: number
   onGroupingChange: (grouping: ListGrouping) => void
   onOpenMovie: (movie: TestMovie) => void
-  onPickRandomMovie: () => void
+  onPickRandomMovie: (movie: TestMovie) => void
   onSelectMovie: (movie: TestMovie) => void
 }
 
@@ -578,6 +595,9 @@ const WarpList = ({
   onPickRandomMovie,
   onSelectMovie,
 }: WarpListProps) => {
+  const [randomPulseId, setRandomPulseId] = useState<string | null>(null)
+  const pulseTimerRef = useRef<number | null>(null)
+
   const groupedMovies = useMemo(() => {
     const groups =
       grouping === 'alpha'
@@ -589,6 +609,54 @@ const WarpList = ({
         : Number(groupA) - Number(groupB),
     )
   }, [grouping, movies])
+
+  useEffect(
+    () => () => {
+      if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current)
+    },
+    [],
+  )
+
+  const handlePickRandomMovie = () => {
+    const movie = movies[Math.floor(Math.random() * Math.max(movies.length, 1))]
+    if (!movie) return
+
+    onPickRandomMovie(movie)
+    setRandomPulseId(movie.id)
+    if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current)
+    pulseTimerRef.current = window.setTimeout(() => {
+      setRandomPulseId(null)
+      pulseTimerRef.current = null
+    }, 1100)
+
+    window.requestAnimationFrame(() => {
+      const scroller = document.querySelector<HTMLElement>('.warp-list')
+      const row = document.querySelector<HTMLElement>(
+        `[data-movie-id="${movie.id}"]`,
+      )
+      if (!scroller || !row) return
+
+      const startTop = scroller.scrollTop
+      const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
+      const targetTop = Math.max(
+        0,
+        Math.min(
+          maxTop,
+          row.offsetTop - scroller.clientHeight / 2 + row.clientHeight / 2,
+        ),
+      )
+      const duration = 520
+      const startTime = performance.now()
+      const animateScroll = (time: number) => {
+        const progress = Math.min(1, (time - startTime) / duration)
+        const eased = 1 - (1 - progress) ** 3
+        scroller.scrollTop = startTop + (targetTop - startTop) * eased
+        if (progress < 1) window.requestAnimationFrame(animateScroll)
+      }
+
+      window.requestAnimationFrame(animateScroll)
+    })
+  }
 
   return (
     <section className='warp-list' aria-label='Movie list view'>
@@ -612,7 +680,7 @@ const WarpList = ({
           </button>
         </div>
         <div className='warp-list-title'>
-          <h1>Movie index</h1>
+          <h1>Movie Index</h1>
           <p>
             {loadState === 'ready'
               ? `${totalMovieCount.toLocaleString()} movies in index`
@@ -621,11 +689,18 @@ const WarpList = ({
         </div>
         <button
           type='button'
-          className='warp-random-cta'
+          className={cn('warp-random-cta', randomPulseId && 'is-rolling')}
+          aria-label='Pick random movie'
           disabled={!movies.length}
-          onClick={onPickRandomMovie}
+          onClick={handlePickRandomMovie}
         >
-          Pick random movie
+          <span className='warp-dice-face' aria-hidden='true'>
+            <span />
+            <span />
+            <span />
+            <span />
+            <span />
+          </span>
         </button>
       </header>
 
@@ -642,9 +717,11 @@ const WarpList = ({
                 <button
                   type='button'
                   key={movie.id}
+                  data-movie-id={movie.id}
                   className={cn(
                     'warp-list-row',
                     activeMovieId === movie.id && 'is-active',
+                    randomPulseId === movie.id && 'is-random-pulse',
                   )}
                   onClick={() => onOpenMovie(movie)}
                   onFocus={() => onSelectMovie(movie)}
@@ -670,8 +747,7 @@ const WarpList = ({
                   <span className='warp-list-row-main'>
                     <span className='warp-list-row-title'>{movie.title}</span>
                     <span className='warp-list-row-meta'>
-                      {movie.year} / {movie.runtime} /{' '}
-                      {movie.countries || 'Cinema'}
+                      {formatMovieMeta(movie)}
                     </span>
                   </span>
                   <span className='warp-list-row-genres'>
@@ -681,7 +757,6 @@ const WarpList = ({
                         <span key={genre}>{genre}</span>
                       ))}
                   </span>
-                  <span className='warp-list-row-rating'>{movie.rating}</span>
                 </button>
               ))}
             </div>
@@ -734,6 +809,7 @@ const WarpChrome = ({
           <path d='M33.5 4.5c8.2 1.4 17.8 14.4 21.3 28.1 3.7 14.1-.9 30.2-9.8 35.7-2.9 1.8-5.3-3.9-8.5-2.5-4.4 2-7 7.1-10.8 5.9-3.5-1.1-3.2-7.2-6.3-8.7-4.1-2-8.9 2.7-10.4-.6C4.7 53.8 5.7 35.6 11.5 23 16.6 11.8 25.3 3.1 33.5 4.5Z' />
           <path d='M24.2 31.7c.5-4.1 3.3-7.2 7-7.7 5.2-.7 10.3 4.5 11.2 11.4' />
         </svg>
+        <span className='warp-brand-name'>ScrollFlix</span>
       </button>
       <p className='warp-manifesto'>
         What to Watch is a movie-led discovery wall built for indecisive nights.
@@ -755,9 +831,7 @@ const WarpChrome = ({
     <div className='warp-active-peek' aria-live='polite'>
       <span>{activeMovie?.title ?? 'Loading'}</span>
       <span>
-        {activeMovie
-          ? `${activeMovie.year} / ${activeMovie.rating} / ${movieCount} indexed`
-          : `${movieCount} loading`}
+        {activeMovie ? formatMovieMeta(activeMovie) : `${movieCount} loading`}
       </span>
     </div>
 
@@ -997,9 +1071,7 @@ const WatchLinksDialog = ({ movie, onClose }: WatchLinksDialogProps) => (
       </button>
       <p className='warp-watch-kicker'>Watch options</p>
       <h2>{movie.title}</h2>
-      <p className='warp-watch-meta'>
-        {movie.year} / {movie.runtime} / {movie.countries || 'Cinema'}
-      </p>
+      <p className='warp-watch-meta'>{formatMovieMeta(movie)}</p>
       <div className='warp-watch-links'>
         {WATCH_LINKS.map((link) => (
           <button type='button' key={link.label} disabled>
@@ -1063,9 +1135,7 @@ const MovieDetailsCard = ({
           />
         </div>
         <div className='warp-details-copy'>
-          <p className='warp-details-kicker'>
-            {movie.year} / {movie.rating} / {movie.runtime}
-          </p>
+          <p className='warp-details-kicker'>{formatMovieMeta(movie)}</p>
           <h2>{movie.title}</h2>
           {movie.tagline ? (
             <p className='warp-details-tagline'>{movie.tagline}</p>

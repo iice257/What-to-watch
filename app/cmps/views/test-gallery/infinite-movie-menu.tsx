@@ -35,9 +35,9 @@ type Mat4 = Float32Array
 
 const SPHERE_RADIUS = 2.58
 const TARGET_FRAME_DURATION = 1000 / 60
-const ICON_TEXTURE_CELL_SIZE = 256
+const ICON_TEXTURE_CELL_SIZE = 192
 const ICON_TEXTURE_PADDING = 12
-const ICON_INSTANCE_COUNT = 500
+const ICON_INSTANCE_COUNT = 1000
 const ICON_REST_SCALE = 0.18
 const ICON_DETAIL_SCALE = 0.34
 const DETAIL_CLICK_OPEN_DELAY_MS = 0
@@ -103,9 +103,9 @@ in float vAlpha;
 flat in int vInstanceId;
 
 float roundedRectMask(vec2 uv) {
-  vec2 q = abs(uv - vec2(0.5)) - vec2(0.415, 0.465);
-  float dist = length(max(q, 0.0)) - 0.055;
-  return 1.0 - smoothstep(0.0, 0.018, dist);
+  vec2 q = abs(uv - vec2(0.5)) - vec2(0.34, 0.39);
+  float dist = length(max(q, 0.0)) - 0.11;
+  return 1.0 - smoothstep(0.0, 0.024, dist);
 }
 
 void main() {
@@ -116,7 +116,7 @@ void main() {
   vec2 cellOffset = vec2(float(cellX), float(cellY)) * cellSize;
   vec2 cellPadding = cellSize * uAtlasPadding;
 
-  vec2 st = vec2(vUvs.x, 1.0 - vUvs.y);
+  vec2 st = vUvs;
   st = st * (cellSize - cellPadding * 2.0) + cellOffset + cellPadding;
 
   vec4 color = texture(uTex, st);
@@ -1163,7 +1163,7 @@ class InfiniteMovieEngine<T> {
         ),
       )
     } else {
-      cameraTargetZ += this.control.rotationVelocity * 68 + 2.1
+      cameraTargetZ += this.control.rotationVelocity * 58 + 0.72
       damping = 7 / timeScale
     }
 
@@ -1368,11 +1368,6 @@ export const InfiniteMovieMenu = <T,>({
       window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false
     if (!isDesktopWheel) return
 
-    if (event.deltaY < -10 && activeItemRef.current) {
-      event.preventDefault()
-      beginDetailsFlow(activeItemRef.current, 'slow')
-    }
-
     if (event.deltaY > 10 && openTimerRef.current) {
       event.preventDefault()
       cancelDetailsFlow()
@@ -1439,17 +1434,12 @@ export const InfiniteMovieMenu = <T,>({
           pointerDownRef.current = null
         }}
         onPointerUp={finishPointerInteraction}
-        onClick={(event) => {
+        onClick={() => {
           pointerDownRef.current = null
           clearHoldState()
           if (suppressNextClickRef.current) {
             suppressNextClickRef.current = false
-            return
           }
-
-          const pickedItem =
-            engineRef.current?.pickItemAt(event.clientX, event.clientY) ?? null
-          beginDetailsFlow(pickedItem, 'fast')
         }}
       />
 

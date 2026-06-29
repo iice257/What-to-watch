@@ -269,6 +269,8 @@
     --warp-pointer-y: 0;
     --warp-chrome: 24px;
     --warp-pill-bg: rgb(187 187 187 / 0.86);
+    --warp-control-height: 45px;
+    --warp-control-inner-height: 37px;
     background: #000;
     color: #f7f7f1;
     font-family: "DM Sans", ui-sans-serif, system-ui, sans-serif;
@@ -327,8 +329,8 @@
 
   .warp-infinite-menu.is-hold-primed .warp-infinite-menu-canvas {
     cursor: grabbing;
-    filter: brightness(0.9) saturate(0.96);
-    transform: scale(0.992);
+    filter: brightness(0.96) saturate(1.03);
+    transform: scale(1.018);
   }
 
   .warp-infinite-sheen {
@@ -624,7 +626,9 @@
   }
 
   .warp-mark {
-    display: block;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
     width: 45px;
     height: 76px;
     border: 0;
@@ -634,15 +638,20 @@
   }
 
   .warp-mark svg {
+    flex: 0 0 auto;
     display: block;
-    width: 100%;
-    height: 100%;
+    width: 45px;
+    height: 76px;
     fill: #000;
     filter: drop-shadow(0 0 0 #fff) drop-shadow(0 0 1px #fff);
     stroke: #fff;
     stroke-linecap: round;
     stroke-linejoin: round;
     stroke-width: 3.2;
+  }
+
+  .warp-brand-name {
+    display: none;
   }
 
   .warp-manifesto,
@@ -731,17 +740,17 @@
 
   .warp-mode-toggle {
     left: 16px;
-    bottom: 31px;
+    bottom: 32px;
     width: 89px;
-    height: 57px;
+    height: var(--warp-control-height);
     justify-content: space-between;
-    padding: 5px;
+    padding: 4px;
   }
 
   .warp-mode-toggle button {
     display: grid;
-    width: 47px;
-    height: 47px;
+    width: var(--warp-control-inner-height);
+    height: var(--warp-control-inner-height);
     place-items: center;
     border: 0;
     border-radius: 999px;
@@ -823,7 +832,7 @@
   .warp-filter-actions {
     position: fixed;
     right: 34px;
-    bottom: 31px;
+    bottom: 32px;
     z-index: 54;
     display: flex;
     gap: 8px;
@@ -838,7 +847,7 @@
 
   .warp-filter-button {
     width: 82px;
-    height: 57px;
+    height: var(--warp-control-height);
     justify-content: center;
     gap: 6px;
     font-size: 18px;
@@ -848,7 +857,7 @@
 
   .warp-filter-reset {
     width: 66px;
-    height: 48px;
+    height: var(--warp-control-height);
     justify-content: center;
     font-size: 12px;
     font-weight: 900;
@@ -900,12 +909,14 @@
 
   .warp-filter-panel button {
     display: flex;
+    min-height: var(--warp-control-inner-height);
+    align-items: center;
     justify-content: space-between;
     gap: 10px;
     border: 1px solid rgb(255 255 255 / 0.12);
     border-radius: 999px;
     background: rgb(255 255 255 / 0.06);
-    padding: 9px 11px;
+    padding: 0 11px;
     color: rgb(255 255 255 / 0.75);
     font-size: 11px;
     font-weight: 800;
@@ -967,7 +978,8 @@
     border: 1px solid rgb(255 255 255 / 0.14);
     border-radius: 999px;
     background: rgb(255 255 255 / 0.08);
-    padding: 7px 10px;
+    min-height: var(--warp-control-inner-height);
+    padding: 0 10px;
     color: rgb(255 255 255 / 0.7);
     font-size: 11px;
     font-weight: 900;
@@ -1158,7 +1170,8 @@
   }
 
   .warp-details-genres button {
-    padding: 9px 12px;
+    min-height: var(--warp-control-inner-height);
+    padding: 0 12px;
   }
 
   .warp-details-genres button:hover,
@@ -1175,7 +1188,8 @@
     top: 22px;
     right: 22px;
     z-index: 2;
-    padding: 10px 15px;
+    min-height: var(--warp-control-inner-height);
+    padding: 0 15px;
   }
 
   .warp-list {
@@ -1183,9 +1197,13 @@
     inset: 0;
     z-index: 4;
     overflow: auto;
-    padding: 156px 24px 116px;
+    padding: 34px 24px 116px;
     background: #000;
     scrollbar-width: none;
+  }
+
+  .warp-shell[data-mode="list"] .warp-topbar {
+    display: none;
   }
 
   .warp-list::-webkit-scrollbar {
@@ -1197,7 +1215,7 @@
     top: 0;
     z-index: 5;
     display: grid;
-    grid-template-columns: minmax(220px, 0.8fr) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(214px, 0.72fr) minmax(0, 1fr) auto;
     align-items: center;
     gap: 16px;
     max-width: 1180px;
@@ -1217,7 +1235,7 @@
 
   .warp-list-sort button {
     min-width: 104px;
-    height: 38px;
+    height: var(--warp-control-inner-height);
     border: 0;
     border-radius: 999px;
     background: transparent;
@@ -1233,8 +1251,8 @@
   }
 
   .warp-list-title {
-    justify-self: end;
-    text-align: right;
+    justify-self: center;
+    text-align: center;
   }
 
   .warp-list-title h1,
@@ -1254,19 +1272,77 @@
   }
 
   .warp-random-cta {
-    min-width: 188px;
-    height: 54px;
+    display: grid;
+    width: var(--warp-control-height);
+    height: var(--warp-control-height);
+    place-items: center;
     border: 0;
     border-radius: 999px;
+    background: rgb(255 255 255 / 0.12);
+    color: #fff;
+    transition:
+      background 180ms ease,
+      color 180ms ease,
+      transform 180ms ease;
+  }
+
+  .warp-random-cta:hover,
+  .warp-random-cta:focus-visible {
+    outline: none;
     background: #fff;
     color: #000;
-    font-size: 15px;
-    font-weight: 900;
-    letter-spacing: -0.035em;
+    transform: translateY(-1px);
+  }
+
+  .warp-random-cta.is-rolling {
+    animation: warp-dice-roll 640ms cubic-bezier(0.16, 1, 0.3, 1);
   }
 
   .warp-random-cta:disabled {
     opacity: 0.48;
+  }
+
+  .warp-dice-face {
+    position: relative;
+    display: block;
+    width: 19px;
+    height: 19px;
+    border: 2px solid currentColor;
+    border-radius: 6px;
+  }
+
+  .warp-dice-face span {
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  .warp-dice-face span:nth-child(1) {
+    left: 4px;
+    top: 4px;
+  }
+
+  .warp-dice-face span:nth-child(2) {
+    right: 4px;
+    top: 4px;
+  }
+
+  .warp-dice-face span:nth-child(3) {
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+
+  .warp-dice-face span:nth-child(4) {
+    left: 4px;
+    bottom: 4px;
+  }
+
+  .warp-dice-face span:nth-child(5) {
+    right: 4px;
+    bottom: 4px;
   }
 
   .warp-list-groups {
@@ -1302,7 +1378,7 @@
 
   .warp-list-row {
     display: grid;
-    grid-template-columns: 46px minmax(0, 1fr) minmax(8rem, 18rem) 52px;
+    grid-template-columns: 46px minmax(0, 1fr) minmax(8rem, 18rem);
     align-items: center;
     gap: 14px;
     min-height: 68px;
@@ -1406,6 +1482,12 @@
     transform: translateX(6px);
   }
 
+  .warp-list-row.is-random-pulse {
+    border-color: rgb(255 255 255 / 0.7);
+    background: linear-gradient(90deg, rgb(255 255 255 / 0.12), transparent);
+    transform: translateX(10px) scale(1.01);
+  }
+
   .warp-list-row:hover .warp-list-row-poster,
   .warp-list-row:focus-visible .warp-list-row-poster,
   .warp-list-row.is-active .warp-list-row-poster {
@@ -1475,7 +1557,7 @@
   }
 
   .warp-genres-actions button {
-    height: 44px;
+    height: var(--warp-control-height);
     padding: 0 16px;
     font-size: 13px;
   }
@@ -1615,7 +1697,7 @@
   }
 
   .warp-about-actions button {
-    height: 42px;
+    height: var(--warp-control-height);
     padding: 0 16px;
     font-size: 13px;
   }
@@ -1649,10 +1731,24 @@
     }
   }
 
+  @keyframes warp-dice-roll {
+    0% {
+      transform: rotate(0deg) scale(0.92);
+    }
+    58% {
+      transform: rotate(270deg) scale(1.08);
+    }
+    100% {
+      transform: rotate(360deg) scale(1);
+    }
+  }
+
   @media (max-width: 900px) {
     .warp-topbar {
-      grid-template-columns: 66px 1fr auto;
-      gap: 18px;
+      inset: 16px 16px auto;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .warp-clock {
@@ -1660,20 +1756,39 @@
     }
 
     .warp-manifesto {
-      max-width: 220px;
-      font-size: 10px;
+      display: none;
     }
 
     .warp-cta {
-      min-width: 96px;
-      height: 48px;
-      font-size: 14px;
+      display: none;
+    }
+
+    .warp-mark {
+      width: auto;
+      height: 38px;
+      align-items: center;
+      gap: 9px;
+    }
+
+    .warp-mark svg {
+      width: 24px;
+      height: 38px;
+      stroke-width: 3.6;
+    }
+
+    .warp-brand-name {
+      display: block;
+      color: #fff;
+      font-size: 18px;
+      font-weight: 950;
+      letter-spacing: -0.065em;
+      line-height: 1;
     }
 
     .warp-focus-card {
-      bottom: 154px;
-      width: min(320px, calc(100vw - 40px));
-      padding: 12px 18px 13px;
+      bottom: 76px;
+      width: min(300px, calc(100vw - 92px));
+      padding: 11px 17px 12px;
     }
 
     .warp-focus-card span:first-child {
@@ -1684,43 +1799,72 @@
       display: none;
     }
 
+    .warp-mode-toggle,
+    .warp-main-nav,
+    .warp-filter-button,
+    .warp-filter-reset {
+      height: var(--warp-control-height);
+    }
+
+    .warp-mode-toggle {
+      left: 12px;
+      bottom: 18px;
+      width: 72px;
+      padding: 4px;
+    }
+
+    .warp-mode-toggle button {
+      width: 31px;
+      height: var(--warp-control-inner-height);
+    }
+
     .warp-main-nav {
-      bottom: 88px;
-      width: min(264px, calc(100vw - 36px));
+      bottom: 18px;
+      width: min(204px, calc(100vw - 184px));
       justify-content: center;
     }
 
     .warp-main-nav button {
       min-width: 0;
       flex: 1;
-      font-size: 14px;
+      height: var(--warp-control-inner-height);
+      font-size: 13px;
     }
 
     .warp-filter-actions {
-      right: 34px;
-      bottom: 31px;
+      right: 12px;
+      bottom: 18px;
+      gap: 6px;
     }
 
     .warp-filter-reset {
       display: flex;
+      width: 58px;
+      font-size: 11px;
+    }
+
+    .warp-filter-button {
+      width: 70px;
+      font-size: 14px;
     }
 
     .warp-filter-panel {
       right: 18px;
-      bottom: 146px;
+      bottom: 76px;
       width: min(340px, calc(100vw - 36px));
       max-height: min(520px, calc(100dvh - 142px));
     }
 
     .warp-list {
-      padding: 150px 20px 108px;
+      padding: 14px 16px 92px;
     }
 
     .warp-list-heading {
       top: 0;
-      grid-template-columns: 1fr;
-      align-items: start;
-      padding: 14px 0 16px;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 0 14px;
     }
 
     .warp-list-title {
@@ -1734,31 +1878,34 @@
     }
 
     .warp-list-sort {
-      width: 100%;
+      width: auto;
+      grid-column: 1 / -1;
+      order: 2;
     }
 
     .warp-list-sort button {
       flex: 1;
-      min-width: 0;
+      min-width: 112px;
     }
 
     .warp-random-cta {
-      width: 100%;
+      justify-self: end;
+      order: -1;
     }
 
     .warp-list-group {
-      grid-template-columns: 72px minmax(0, 1fr);
-      gap: 14px;
+      grid-template-columns: 58px minmax(0, 1fr);
+      gap: 12px;
     }
 
     .warp-list-group h2 {
-      top: 70px;
+      top: 96px;
       font-size: 28px;
       letter-spacing: -0.055em;
     }
 
     .warp-list-row {
-      grid-template-columns: 42px minmax(0, 1fr) 42px;
+      grid-template-columns: 42px minmax(0, 1fr);
       gap: 10px;
       min-height: 62px;
       padding: 8px 0;
@@ -1779,11 +1926,6 @@
 
     .warp-list-row-genres {
       display: none;
-    }
-
-    .warp-list-row-rating {
-      width: auto;
-      font-size: 12px;
     }
 
     .warp-genres-view {
