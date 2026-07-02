@@ -1958,10 +1958,11 @@
     .warp-focus-card {
       right: 58px;
       bottom: 14px;
-      left: 124px;
+      left: 122px;
       width: auto;
       min-height: 54px;
       padding: 8px 12px 9px;
+      translate: none;
     }
 
     .warp-focus-card span:first-child {

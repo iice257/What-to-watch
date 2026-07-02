@@ -51,6 +51,7 @@ const DATASET_FILE_COUNT = 5
 const INDEX_CATALOG_COUNT = 57294
 const LIST_WINDOW_SIZE = 10000
 const GALLERY_WINDOW_SIZE = 750
+const LOCAL_POSTER_COUNT = 216
 const MIN_DECISION_FILTER_RESULTS = 24
 const TMDB_POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w342'
 const RUNTIME_FILTERS: Array<{
@@ -140,73 +141,31 @@ const getYearNumber = (movie: TestMovie) => {
   return Number.isFinite(year) ? year : 0
 }
 
-const escapePosterText = (value: string) =>
-  value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;')
-
-const getPosterTitleLines = (title: string) => {
-  const words = title.trim().split(/\s+/).filter(Boolean)
-  const lines: string[] = []
-
-  words.forEach((word) => {
-    const currentLine = lines.at(-1)
-    if (!currentLine || `${currentLine} ${word}`.length > 13) {
-      if (lines.length < 5) lines.push(word)
-      return
-    }
-
-    lines[lines.length - 1] = `${currentLine} ${word}`
-  })
-
-  return (lines.length ? lines : ['Untitled']).slice(0, 5)
-}
-
-const getFallbackPosterUrl = (movie: {
-  rank: number
-  title: string
-  year: string
-}) => {
-  const titleLines = getPosterTitleLines(movie.title)
-    .map((line, index) => {
-      const y = 166 + index * 43
-      return `<text x="38" y="${y}" fill="white" font-family="Arial, sans-serif" font-size="39" font-weight="900" letter-spacing="-1">${escapePosterText(line.toUpperCase())}</text>`
-    })
-    .join('')
-  const year = escapePosterText(
-    movie.year && movie.year !== '----' ? movie.year : 'Cinema',
-  )
-  const hue = (movie.rank * 47) % 360
-  const accentHue = (hue + 38) % 360
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 342 513"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="hsl(${hue} 24% 13%)"/><stop offset=".58" stop-color="#070707"/><stop offset="1" stop-color="hsl(${accentHue} 48% 18%)"/></linearGradient><radialGradient id="r" cx=".28" cy=".18" r=".78"><stop offset="0" stop-color="hsl(${accentHue} 62% 54%)" stop-opacity=".35"/><stop offset="1" stop-color="#000" stop-opacity="0"/></radialGradient></defs><rect width="342" height="513" fill="url(#g)"/><rect width="342" height="513" fill="url(#r)"/><rect x="22" y="22" width="298" height="469" rx="24" fill="none" stroke="white" stroke-opacity=".16"/><text x="38" y="74" fill="white" fill-opacity=".55" font-family="Arial, sans-serif" font-size="18" font-weight="800" letter-spacing="4">${year}</text>${titleLines}<circle cx="68" cy="438" r="20" fill="white" fill-opacity=".88"/><circle cx="118" cy="438" r="20" fill="white" fill-opacity=".18"/><circle cx="168" cy="438" r="20" fill="white" fill-opacity=".18"/></svg>`
-
-  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`
-}
+const getFallbackPosterUrl = (rank: number) =>
+  `/media/single/${(rank - 1) % LOCAL_POSTER_COUNT}.jpg`
 
 const formatRuntime = (runtime: string, runtimeMinutes: number | null) => {
   if (runtimeMinutes) {
     const hours = Math.floor(runtimeMinutes / 60)
     const minutes = runtimeMinutes % 60
     if (!hours) return `${minutes}m`
-    return minutes ? `${hours}h ${minutes}m` : `${hours}h`
+    return `${hours}:${String(minutes).padStart(2, '0')}`
   }
 
   const value = runtime.trim()
   if (!value || value === '0' || value === '0:00' || value === '0m') {
-    return 'Runtime TBA'
+    return '-'
   }
   return value
 }
 
 export const formatMovieMeta = (movie: TestMovie) =>
   `Year: ${
-    movie.year && movie.year !== '----' ? movie.year : 'Year TBA'
-  } / Rating: ${
-    movie.ratingValue ? movie.rating : 'Unrated'
-  } / Runtime: ${formatRuntime(movie.runtime, movie.runtimeMinutes)}`
+    movie.year && movie.year !== '----' ? movie.year : '-'
+  } / Rating: ${movie.ratingValue ? movie.rating : '-'} / Hour: ${formatRuntime(
+    movie.runtime,
+    movie.runtimeMinutes,
+  )}`
 
 const hasLatinLeadingTitle = (movie: TestMovie) =>
   /^[A-Za-z]/.test(movie.title.trim())
@@ -413,11 +372,7 @@ const mapMovie = (raw: RawMovie, index: number): TestMovie => {
   const rawId = getText(raw, 'id')
   const posterPath = getText(raw, 'poster_path')
   const title = getText(raw, 'title') || `Untitled ${index + 1}`
-  const fallbackPosterUrl = getFallbackPosterUrl({
-    rank: index + 1,
-    title,
-    year,
-  })
+  const fallbackPosterUrl = getFallbackPosterUrl(index + 1)
 
   return {
     id: rawId ? `${index}-${rawId}` : String(index),
@@ -838,7 +793,7 @@ const WarpWall = ({
       movies.map((movie) => ({
         id: movie.id,
         fallbackImage: movie.fallbackPosterUrl,
-        image: movie.posterUrl,
+        image: movie.fallbackPosterUrl,
         title: movie.title,
         description:
           movie.genres.slice(0, 2).join(' / ') || movie.overview || 'Movie',
