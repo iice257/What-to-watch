@@ -37,7 +37,7 @@ const SPHERE_RADIUS = 2.58
 const TARGET_FRAME_DURATION = 1000 / 60
 const ICON_TEXTURE_CELL_SIZE = 192
 const ICON_TEXTURE_PADDING = 12
-const ICON_INSTANCE_COUNT = 1000
+const ICON_INSTANCE_COUNT = 750
 const ICON_REST_SCALE = 0.18
 const ICON_DETAIL_SCALE = 0.34
 const DETAIL_CLICK_OPEN_DELAY_MS = 0
@@ -708,6 +708,7 @@ class InfiniteMovieEngine<T> {
   private readonly instanceBuffer: WebGLBuffer | null
   private readonly locations: Record<string, WebGLUniformLocation | null>
   private atlasSize = 1
+  private atlasCellSize = ICON_TEXTURE_CELL_SIZE
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -957,11 +958,25 @@ class InfiniteMovieEngine<T> {
 
     const itemCount = Math.max(1, this.items.length)
     this.atlasSize = Math.ceil(Math.sqrt(itemCount))
+    const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number
+    this.atlasCellSize = Math.max(
+      1,
+      Math.min(
+        ICON_TEXTURE_CELL_SIZE,
+        Math.floor(maxTextureSize / Math.max(1, this.atlasSize)),
+      ),
+    )
+    this.canvas.dataset.atlasSize = String(this.atlasSize)
+    this.canvas.dataset.atlasCellSize = String(this.atlasCellSize)
+    this.canvas.dataset.atlasTextureSize = String(
+      this.atlasSize * this.atlasCellSize,
+    )
+    this.canvas.dataset.maxTextureSize = String(maxTextureSize)
     const atlas = document.createElement('canvas')
     const context = atlas.getContext('2d')
     if (!context) return
-    atlas.width = this.atlasSize * ICON_TEXTURE_CELL_SIZE
-    atlas.height = this.atlasSize * ICON_TEXTURE_CELL_SIZE
+    atlas.width = this.atlasSize * this.atlasCellSize
+    atlas.height = this.atlasSize * this.atlasCellSize
     context.fillStyle = '#050505'
     context.fillRect(0, 0, atlas.width, atlas.height)
     context.imageSmoothingEnabled = true
@@ -988,15 +1003,15 @@ class InfiniteMovieEngine<T> {
     this.items.forEach((item, index) => {
       void this.loadImage(item.image, item.fallbackImage).then((image) => {
         if (this.disposed || !this.texture) return
-        const x = (index % this.atlasSize) * ICON_TEXTURE_CELL_SIZE
-        const y = Math.floor(index / this.atlasSize) * ICON_TEXTURE_CELL_SIZE
+        const x = (index % this.atlasSize) * this.atlasCellSize
+        const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
         this.drawImageCover(
           context,
           image,
           x,
           y,
-          ICON_TEXTURE_CELL_SIZE,
-          ICON_TEXTURE_CELL_SIZE,
+          this.atlasCellSize,
+          this.atlasCellSize,
         )
         scheduleAtlasUpload()
       })
@@ -1117,7 +1132,7 @@ class InfiniteMovieEngine<T> {
     gl.uniform1i(this.locations.uAtlasSize, this.atlasSize)
     gl.uniform1f(
       this.locations.uAtlasPadding,
-      ICON_TEXTURE_PADDING / ICON_TEXTURE_CELL_SIZE,
+      Math.min(0.12, ICON_TEXTURE_PADDING / this.atlasCellSize),
     )
     gl.uniform1i(this.locations.uTex, 0)
     gl.activeTexture(gl.TEXTURE0)
