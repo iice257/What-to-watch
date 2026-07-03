@@ -1,5 +1,7 @@
-import { Search, SlidersHorizontal, X } from 'lucide-react'
+import { ChevronsDown, Dices, Search, SlidersHorizontal, X } from 'lucide-react'
 import {
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type WheelEvent,
   useCallback,
   useEffect,
@@ -53,6 +55,8 @@ const LIST_WINDOW_SIZE = 10000
 const GALLERY_WINDOW_SIZE = 750
 const LOCAL_POSTER_COUNT = 216
 const MIN_DECISION_FILTER_RESULTS = 24
+const DETAILS_EXPAND_DRAG_PX = 42
+const DETAILS_CLOSE_DRAG_PX = 68
 const TMDB_POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w342'
 const RUNTIME_FILTERS: Array<{
   id: RuntimeFilter
@@ -171,26 +175,58 @@ const hasLatinLeadingTitle = (movie: TestMovie) =>
   /^[A-Za-z]/.test(movie.title.trim())
 
 type MoviePosterProps = {
+  fallbackDelayMs?: number
   movie: TestMovie
   loading?: 'eager' | 'lazy'
 }
 
-const MoviePoster = ({ movie, loading = 'lazy' }: MoviePosterProps) => {
-  const [isUsingFallback, setIsUsingFallback] = useState(
-    movie.posterUrl === movie.fallbackPosterUrl,
-  )
+const MoviePoster = ({
+  fallbackDelayMs = 1600,
+  movie,
+  loading = 'lazy',
+}: MoviePosterProps) => {
+  const hasRemotePoster = movie.posterUrl !== movie.fallbackPosterUrl
+  const fallbackTimerRef = useRef<number | null>(null)
+  const [showTitleFallback, setShowTitleFallback] = useState(!hasRemotePoster)
+
+  const clearFallbackTimer = useCallback(() => {
+    if (!fallbackTimerRef.current) return
+    window.clearTimeout(fallbackTimerRef.current)
+    fallbackTimerRef.current = null
+  }, [])
 
   useEffect(() => {
-    setIsUsingFallback(movie.posterUrl === movie.fallbackPosterUrl)
-  }, [movie.fallbackPosterUrl, movie.posterUrl])
+    clearFallbackTimer()
+    setShowTitleFallback(!hasRemotePoster)
+    if (hasRemotePoster) {
+      fallbackTimerRef.current = window.setTimeout(() => {
+        fallbackTimerRef.current = null
+        setShowTitleFallback(true)
+      }, fallbackDelayMs)
+    }
+
+    return clearFallbackTimer
+  }, [clearFallbackTimer, fallbackDelayMs, hasRemotePoster])
+
+  if (showTitleFallback) {
+    return (
+      <span className='warp-poster-fallback' data-poster-state='title'>
+        <span>{movie.title}</span>
+      </span>
+    )
+  }
 
   return (
     <img
-      src={isUsingFallback ? movie.fallbackPosterUrl : movie.posterUrl}
+      src={movie.posterUrl}
       alt=''
       loading={loading}
-      data-poster-state={isUsingFallback ? 'fallback' : 'remote'}
-      onError={() => setIsUsingFallback(true)}
+      data-poster-state='remote'
+      onError={() => {
+        clearFallbackTimer()
+        setShowTitleFallback(true)
+      }}
+      onLoad={clearFallbackTimer}
     />
   )
 }
@@ -394,11 +430,44 @@ const mapMovie = (raw: RawMovie, index: number): TestMovie => {
   }
 }
 
+let cachedMovieDataset: TestMovie[] | null = null
+let movieDatasetPromise: Promise<TestMovie[]> | null = null
+
+const loadMovieDataset = () => {
+  if (cachedMovieDataset) return Promise.resolve(cachedMovieDataset)
+
+  movieDatasetPromise ??= Promise.all(
+    Array.from({ length: DATASET_FILE_COUNT }, (_, index) =>
+      fetch(`/json/${index}.json`).then((response) => {
+        if (!response.ok) {
+          throw new Error(`Could not load movie data (${response.status})`)
+        }
+        return response.json() as Promise<RawMovie[]>
+      }),
+    ),
+  )
+    .then((datasets) => {
+      cachedMovieDataset = datasets
+        .flat()
+        .slice(0, LIST_WINDOW_SIZE)
+        .map(mapMovie)
+      return cachedMovieDataset
+    })
+    .catch((error: unknown) => {
+      movieDatasetPromise = null
+      throw error
+    })
+
+  return movieDatasetPromise
+}
+
 export const TestGalleryApp = () => {
-  const [movies, setMovies] = useState<TestMovie[]>([])
+  const [movies, setMovies] = useState<TestMovie[]>(cachedMovieDataset ?? [])
   const [mode, setMode] = useState<ViewMode>('wall')
   const [listGrouping, setListGrouping] = useState<ListGrouping>('year')
-  const [activeMovieId, setActiveMovieId] = useState<string | null>(null)
+  const [activeMovieId, setActiveMovieId] = useState<string | null>(
+    cachedMovieDataset?.[0]?.id ?? null,
+  )
   const [detailsMovieId, setDetailsMovieId] = useState<string | null>(null)
   const [watchMovieId, setWatchMovieId] = useState<string | null>(null)
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
@@ -411,31 +480,22 @@ export const TestGalleryApp = () => {
   const [filterOpen, setFilterOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [aboutMaximized, setAboutMaximized] = useState(false)
-  const [loadState, setLoadState] = useState<LoadState>('loading')
+  const [loadState, setLoadState] = useState<LoadState>(
+    cachedMovieDataset ? 'ready' : 'loading',
+  )
   const [errorMessage, setErrorMessage] = useState('')
   const [timeLabel, setTimeLabel] = useState('')
 
   useEffect(() => {
     let cancelled = false
 
-    Promise.all(
-      Array.from({ length: DATASET_FILE_COUNT }, (_, index) =>
-        fetch(`/json/${index}.json`).then((response) => {
-          if (!response.ok) {
-            throw new Error(`Could not load movie data (${response.status})`)
-          }
-          return response.json() as Promise<RawMovie[]>
-        }),
-      ),
-    )
-      .then((datasets) => {
+    loadMovieDataset()
+      .then((nextMovies) => {
         if (cancelled) return
-        const nextMovies = datasets
-          .flat()
-          .slice(0, LIST_WINDOW_SIZE)
-          .map(mapMovie)
         setMovies(nextMovies)
-        setActiveMovieId(nextMovies[0]?.id ?? null)
+        setActiveMovieId(
+          (currentMovieId) => currentMovieId ?? nextMovies[0]?.id ?? null,
+        )
         setLoadState('ready')
       })
       .catch((error: unknown) => {
@@ -580,6 +640,9 @@ export const TestGalleryApp = () => {
   const handleOpenMovie = useCallback((movie: TestMovie) => {
     setActiveMovieId(movie.id)
     setDetailsMovieId(movie.id)
+    setWatchMovieId(null)
+    setFilterOpen(false)
+    setAboutOpen(false)
   }, [])
 
   const handleOpenWatchLinks = useCallback((movie: TestMovie) => {
@@ -611,6 +674,8 @@ export const TestGalleryApp = () => {
   return (
     <main
       className='phantom-test-shell warp-shell min-h-dvh overflow-hidden bg-black text-white'
+      data-details-open={detailsMovieId ? 'true' : 'false'}
+      data-filter-open={filterOpen ? 'true' : 'false'}
       data-mode={mode}
       onMouseMove={(event) => {
         const x = event.clientX / Math.max(window.innerWidth, 1) - 0.5
@@ -711,12 +776,22 @@ export const TestGalleryApp = () => {
         ) : null}
         <button
           type='button'
-          className='warp-filter-button'
+          className={cn('warp-filter-button', filterOpen && 'is-open')}
           aria-expanded={filterOpen}
+          aria-label={filterOpen ? 'Close filters' : 'Open filters'}
           onClick={() => setFilterOpen((isOpen) => !isOpen)}
         >
-          <SlidersHorizontal className='warp-filter-icon' aria-hidden='true' />
-          <span className='warp-filter-label'>Filter</span>
+          {filterOpen ? (
+            <X className='warp-filter-icon' aria-hidden='true' />
+          ) : (
+            <SlidersHorizontal
+              className='warp-filter-icon'
+              aria-hidden='true'
+            />
+          )}
+          <span className='warp-filter-label'>
+            {filterOpen ? 'Close' : 'Filter'}
+          </span>
           {selectedFilterCount ? (
             <span className='warp-filter-count'>{selectedFilterCount}</span>
           ) : null}
@@ -1033,11 +1108,7 @@ const WarpList = ({
             onClick={handlePickRandomMovie}
           >
             <span className='warp-dice-face' aria-hidden='true'>
-              <span />
-              <span />
-              <span />
-              <span />
-              <span />
+              <Dices className='warp-dice-icon' strokeWidth={2.45} />
             </span>
           </button>
         </div>
@@ -1494,11 +1565,66 @@ const MovieDetailsCard = ({
   onClose,
   onSelectGenre,
 }: MovieDetailsCardProps) => {
+  const [isExpanded, setIsExpanded] = useState(false)
+  const [dragOffset, setDragOffset] = useState(0)
+  const dragStartYRef = useRef<number | null>(null)
+  const dragPointerIdRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    if (movie.id) {
+      setIsExpanded(false)
+      setDragOffset(0)
+    }
+  }, [movie.id])
+
   const handleWheel = (event: WheelEvent<HTMLElement>) => {
     const isDesktopWheel =
       window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false
     if (isDesktopWheel && event.deltaY > 10) onClose()
   }
+
+  const handleDragStart = (event: ReactPointerEvent<HTMLElement>) => {
+    dragStartYRef.current = event.clientY
+    dragPointerIdRef.current = event.pointerId
+    event.currentTarget.setPointerCapture?.(event.pointerId)
+  }
+
+  const handleDragMove = (event: ReactPointerEvent<HTMLElement>) => {
+    if (dragPointerIdRef.current !== event.pointerId) return
+    const startY = dragStartYRef.current
+    if (startY === null) return
+
+    const nextOffset = Math.max(-96, Math.min(118, event.clientY - startY))
+    setDragOffset(nextOffset)
+  }
+
+  const finishDrag = (clientY: number) => {
+    const startY = dragStartYRef.current
+    if (startY === null) return
+
+    const deltaY = clientY - startY
+    dragStartYRef.current = null
+    dragPointerIdRef.current = null
+    setDragOffset(0)
+
+    if (deltaY < -DETAILS_EXPAND_DRAG_PX) {
+      setIsExpanded(true)
+      return
+    }
+
+    if (deltaY > DETAILS_CLOSE_DRAG_PX) {
+      onClose()
+    }
+  }
+
+  const handleDragEnd = (event: ReactPointerEvent<HTMLElement>) => {
+    if (dragPointerIdRef.current !== event.pointerId) return
+    finishDrag(event.clientY)
+  }
+
+  const detailsStyle = {
+    '--details-drag-y': `${dragOffset}px`,
+  } as CSSProperties
 
   return (
     <section
@@ -1512,40 +1638,68 @@ const MovieDetailsCard = ({
         aria-label='Close details'
         onClick={onClose}
       />
-      <article className='warp-details-card'>
+      <article
+        className={cn(
+          'warp-details-card',
+          isExpanded && 'is-expanded',
+          dragOffset !== 0 && 'is-dragging',
+        )}
+        style={detailsStyle}
+      >
         <button
           type='button'
           className='warp-details-close'
           aria-label='Close details'
           onClick={onClose}
         >
-          Close
+          <X aria-hidden='true' size={18} strokeWidth={3} />
         </button>
+        <div
+          className='warp-details-grip-zone'
+          onPointerCancel={handleDragEnd}
+          onPointerDown={handleDragStart}
+          onPointerMove={handleDragMove}
+          onPointerUp={handleDragEnd}
+        >
+          <span className='warp-details-handle' />
+        </div>
         <div className='warp-details-poster'>
-          <MoviePoster loading='eager' movie={movie} />
+          <MoviePoster fallbackDelayMs={450} loading='eager' movie={movie} />
         </div>
         <div className='warp-details-copy'>
-          <p className='warp-details-kicker'>{formatMovieMeta(movie)}</p>
-          <h2>{movie.title}</h2>
-          {movie.tagline ? (
-            <p className='warp-details-tagline'>{movie.tagline}</p>
-          ) : null}
-          <p className='warp-details-overview'>
-            {movie.overview || 'No overview available yet.'}
-          </p>
-          <div className='warp-details-genres'>
-            {movie.genres.map((genre) => (
-              <button
-                type='button'
-                key={genre}
-                onClick={() => onSelectGenre(genre)}
-              >
-                {genre}
-              </button>
-            ))}
+          <div className='warp-details-copy-scroll'>
+            <p className='warp-details-kicker'>{formatMovieMeta(movie)}</p>
+            <h2>{movie.title}</h2>
+            {movie.tagline ? (
+              <p className='warp-details-tagline'>{movie.tagline}</p>
+            ) : null}
+            <p className='warp-details-overview'>
+              {movie.overview || 'No overview available yet.'}
+            </p>
+            <div className='warp-details-genres'>
+              {movie.genres.map((genre) => (
+                <button
+                  type='button'
+                  key={genre}
+                  onClick={() => onSelectGenre(genre)}
+                >
+                  {genre}
+                </button>
+              ))}
+            </div>
+            <p className='warp-details-origin'>{movie.countries || 'Cinema'}</p>
           </div>
-          <p className='warp-details-origin'>{movie.countries || 'Cinema'}</p>
         </div>
+        {!isExpanded ? (
+          <button
+            type='button'
+            className='warp-details-more'
+            onClick={() => setIsExpanded(true)}
+          >
+            <span>More details</span>
+            <ChevronsDown aria-hidden='true' size={17} strokeWidth={2.8} />
+          </button>
+        ) : null}
       </article>
     </section>
   )
