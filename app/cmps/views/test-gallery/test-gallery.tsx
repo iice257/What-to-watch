@@ -1,4 +1,13 @@
-import { ChevronsDown, Dices, Search, SlidersHorizontal, X } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronRight,
+  ChevronsDown,
+  ChevronsUp,
+  Dices,
+  Search,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react'
 import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
@@ -37,7 +46,18 @@ type TestMovie = {
 type ViewMode = 'wall' | 'list' | 'genres'
 type ListGrouping = 'year' | 'alpha'
 type LoadState = 'loading' | 'ready' | 'error'
-type RuntimeFilter = 'under90' | 'under120' | 'long'
+type ContentFilter = 'all' | 'movies' | 'series'
+type RuntimeFilter =
+  | 'movie30to60'
+  | 'movie90to120'
+  | 'movie150to180'
+  | 'movie210plus'
+  | 'seriesUnder25'
+  | 'series40plus'
+  | 'seriesSingleSeason'
+  | 'seriesBinge'
+  | 'seriesLong'
+  | 'seriesLongRun'
 type MoodFilter = 'fast' | 'dark' | 'funny' | 'romantic' | 'weird' | 'highRated'
 type GenreSummary = {
   count: number
@@ -48,37 +68,102 @@ type DecisionFilterResult = {
   movies: TestMovie[]
   strictCount: number
 }
+type PosterLoadState = 'loading' | 'loaded' | 'fallback'
+type MotionPhase = 'enter' | 'exit'
 
 const DATASET_FILE_COUNT = 5
 const INDEX_CATALOG_COUNT = 57294
 const LIST_WINDOW_SIZE = 10000
-const GALLERY_WINDOW_SIZE = 750
-const LOCAL_POSTER_COUNT = 216
+const GALLERY_WINDOW_SIZE = 1000
 const MIN_DECISION_FILTER_RESULTS = 24
 const DETAILS_EXPAND_DRAG_PX = 42
 const DETAILS_CLOSE_DRAG_PX = 68
+const EXIT_ANIMATION_MS = 220
 const TMDB_POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w342'
-const RUNTIME_FILTERS: Array<{
+const CONTENT_FILTERS: Array<{
+  disabled?: boolean
+  id: ContentFilter
+  label: string
+  meta?: string
+}> = [
+  { id: 'all', label: 'All' },
+  { id: 'movies', label: 'Movies' },
+  { disabled: true, id: 'series', label: 'Series', meta: 'Coming soon' },
+]
+const MOVIE_RUNTIME_FILTERS: Array<{
+  disabled?: boolean
   id: RuntimeFilter
   label: string
   test: (runtimeMinutes: number | null) => boolean
 }> = [
   {
-    id: 'under90',
-    label: 'Under 90 min',
-    test: (runtimeMinutes) => Boolean(runtimeMinutes && runtimeMinutes < 90),
+    id: 'movie30to60',
+    label: '30 mins to 1 hr',
+    test: (runtimeMinutes) =>
+      Boolean(runtimeMinutes && runtimeMinutes >= 30 && runtimeMinutes <= 60),
   },
   {
-    id: 'under120',
-    label: 'Under 2 hr',
-    test: (runtimeMinutes) => Boolean(runtimeMinutes && runtimeMinutes < 120),
+    id: 'movie90to120',
+    label: '1 hr 30 mins to 2 hrs',
+    test: (runtimeMinutes) =>
+      Boolean(runtimeMinutes && runtimeMinutes >= 90 && runtimeMinutes <= 120),
   },
   {
-    id: 'long',
-    label: 'Long watch',
-    test: (runtimeMinutes) => Boolean(runtimeMinutes && runtimeMinutes >= 150),
+    id: 'movie150to180',
+    label: '2 hr 30 mins to 3 hrs',
+    test: (runtimeMinutes) =>
+      Boolean(runtimeMinutes && runtimeMinutes >= 150 && runtimeMinutes <= 180),
+  },
+  {
+    id: 'movie210plus',
+    label: '3 hr 30 mins and longer',
+    test: (runtimeMinutes) => Boolean(runtimeMinutes && runtimeMinutes >= 210),
   },
 ]
+const SERIES_RUNTIME_FILTERS: Array<{
+  disabled?: boolean
+  id: RuntimeFilter
+  label: string
+  test: (runtimeMinutes: number | null) => boolean
+}> = [
+  {
+    disabled: true,
+    id: 'seriesUnder25',
+    label: 'Under 25 min / ep.',
+    test: () => false,
+  },
+  {
+    disabled: true,
+    id: 'series40plus',
+    label: '40 min+ / ep.',
+    test: () => false,
+  },
+  {
+    disabled: true,
+    id: 'seriesSingleSeason',
+    label: 'Single season',
+    test: () => false,
+  },
+  {
+    disabled: true,
+    id: 'seriesBinge',
+    label: 'Binge (2-3 seasons)',
+    test: () => false,
+  },
+  {
+    disabled: true,
+    id: 'seriesLong',
+    label: 'Long series (3+ seasons)',
+    test: () => false,
+  },
+  {
+    disabled: true,
+    id: 'seriesLongRun',
+    label: 'Long-run episodic',
+    test: () => false,
+  },
+]
+const RUNTIME_FILTERS = [...MOVIE_RUNTIME_FILTERS, ...SERIES_RUNTIME_FILTERS]
 const MOOD_FILTERS: Array<{
   genres?: string[]
   id: MoodFilter
@@ -145,14 +230,36 @@ const getYearNumber = (movie: TestMovie) => {
   return Number.isFinite(year) ? year : 0
 }
 
-const getFallbackPosterUrl = (rank: number) =>
-  `/media/single/${(rank - 1) % LOCAL_POSTER_COUNT}.jpg`
+const escapeSvgText = (value: string) =>
+  value.replace(/[&<>"']/g, (character) => {
+    switch (character) {
+      case '&':
+        return '&amp;'
+      case '<':
+        return '&lt;'
+      case '>':
+        return '&gt;'
+      case '"':
+        return '&quot;'
+      default:
+        return '&apos;'
+    }
+  })
+
+const getFallbackPosterUrl = (rank: number, title: string, year: string) => {
+  const hue = Math.round(seededRandom(rank) * 360)
+  const accentHue = (hue + 42) % 360
+  const displayTitle = escapeSvgText(title || 'Untitled').slice(0, 72)
+  const displayYear = escapeSvgText(year && year !== '----' ? year : 'Movie')
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 342 513"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="hsl(${hue} 38% 26%)"/><stop offset=".52" stop-color="#111"/><stop offset="1" stop-color="hsl(${accentHue} 42% 18%)"/></linearGradient></defs><rect width="342" height="513" fill="url(#g)"/><circle cx="272" cy="88" r="88" fill="rgba(255,255,255,.13)"/><rect x="28" y="32" width="286" height="449" rx="22" fill="rgba(0,0,0,.18)" stroke="rgba(255,255,255,.22)"/><text x="36" y="378" fill="rgba(255,255,255,.9)" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="900">${displayTitle}</text><text x="36" y="424" fill="rgba(255,255,255,.78)" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" letter-spacing="3">${displayYear} | #${rank}</text></svg>`
+
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`
+}
 
 const formatRuntime = (runtime: string, runtimeMinutes: number | null) => {
   if (runtimeMinutes) {
     const hours = Math.floor(runtimeMinutes / 60)
     const minutes = runtimeMinutes % 60
-    if (!hours) return `${minutes}m`
     return `${hours}:${String(minutes).padStart(2, '0')}`
   }
 
@@ -164,71 +271,84 @@ const formatRuntime = (runtime: string, runtimeMinutes: number | null) => {
 }
 
 export const formatMovieMeta = (movie: TestMovie) =>
-  `Year: ${
-    movie.year && movie.year !== '----' ? movie.year : '-'
-  } / Rating: ${movie.ratingValue ? movie.rating : '-'} / Hour: ${formatRuntime(
-    movie.runtime,
-    movie.runtimeMinutes,
-  )}`
+  `Year: ${movie.year && movie.year !== '----' ? movie.year : '-'} | Rating: ${
+    movie.ratingValue ? movie.rating : '-'
+  } | Hour: ${formatRuntime(movie.runtime, movie.runtimeMinutes)}`
 
 const hasLatinLeadingTitle = (movie: TestMovie) =>
   /^[A-Za-z]/.test(movie.title.trim())
 
 type MoviePosterProps = {
-  fallbackDelayMs?: number
   movie: TestMovie
   loading?: 'eager' | 'lazy'
 }
 
-const MoviePoster = ({
-  fallbackDelayMs = 1600,
-  movie,
-  loading = 'lazy',
-}: MoviePosterProps) => {
+const MoviePoster = ({ movie, loading = 'lazy' }: MoviePosterProps) => {
   const hasRemotePoster = movie.posterUrl !== movie.fallbackPosterUrl
-  const fallbackTimerRef = useRef<number | null>(null)
-  const [showTitleFallback, setShowTitleFallback] = useState(!hasRemotePoster)
-
-  const clearFallbackTimer = useCallback(() => {
-    if (!fallbackTimerRef.current) return
-    window.clearTimeout(fallbackTimerRef.current)
-    fallbackTimerRef.current = null
-  }, [])
+  const [posterSrc, setPosterSrc] = useState(movie.posterUrl)
+  const [loadState, setLoadState] = useState<PosterLoadState>(
+    hasRemotePoster ? 'loading' : 'fallback',
+  )
 
   useEffect(() => {
-    clearFallbackTimer()
-    setShowTitleFallback(!hasRemotePoster)
-    if (hasRemotePoster) {
-      fallbackTimerRef.current = window.setTimeout(() => {
-        fallbackTimerRef.current = null
-        setShowTitleFallback(true)
-      }, fallbackDelayMs)
-    }
-
-    return clearFallbackTimer
-  }, [clearFallbackTimer, fallbackDelayMs, hasRemotePoster])
-
-  if (showTitleFallback) {
-    return (
-      <span className='warp-poster-fallback' data-poster-state='title'>
-        <span>{movie.title}</span>
-      </span>
-    )
-  }
+    setPosterSrc(movie.posterUrl)
+    setLoadState(hasRemotePoster ? 'loading' : 'fallback')
+  }, [hasRemotePoster, movie.posterUrl])
 
   return (
-    <img
-      src={movie.posterUrl}
-      alt=''
-      loading={loading}
-      data-poster-state='remote'
-      onError={() => {
-        clearFallbackTimer()
-        setShowTitleFallback(true)
-      }}
-      onLoad={clearFallbackTimer}
-    />
+    <span className='warp-poster-frame' data-poster-state={loadState}>
+      <span className='warp-poster-placeholder'>
+        <span>{movie.title}</span>
+      </span>
+      <img
+        src={posterSrc}
+        alt=''
+        loading={loading}
+        onError={() => {
+          if (posterSrc === movie.fallbackPosterUrl) {
+            setLoadState('fallback')
+            return
+          }
+          setPosterSrc(movie.fallbackPosterUrl)
+          setLoadState('fallback')
+        }}
+        onLoad={() => setLoadState(hasRemotePoster ? 'loaded' : 'fallback')}
+      />
+    </span>
   )
+}
+
+const useExitPresence = <T,>(
+  isOpen: boolean,
+  value: T | null = null,
+  exitMs = EXIT_ANIMATION_MS,
+) => {
+  const [isPresent, setIsPresent] = useState(isOpen)
+  const [motionPhase, setMotionPhase] = useState<MotionPhase>(
+    isOpen ? 'enter' : 'exit',
+  )
+  const [presentValue, setPresentValue] = useState<T | null>(value)
+
+  useEffect(() => {
+    if (isOpen) {
+      if (value !== null) setPresentValue(value)
+      setIsPresent(true)
+      setMotionPhase('enter')
+      return
+    }
+
+    if (!isPresent) return
+
+    setMotionPhase('exit')
+    const timer = window.setTimeout(() => {
+      setIsPresent(false)
+      setPresentValue(null)
+    }, exitMs)
+
+    return () => window.clearTimeout(timer)
+  }, [exitMs, isOpen, isPresent, value])
+
+  return { isPresent, motionPhase, value: presentValue }
 }
 
 export const getGenreOverlap = (movie: TestMovie, selectedGenres: string[]) => {
@@ -388,6 +508,15 @@ export const groupMoviesAlphabetically = (movies: TestMovie[]) =>
     return groups
   }, {})
 
+const getMovieListGroupKey = (movie: TestMovie, grouping: ListGrouping) => {
+  if (grouping === 'alpha') {
+    const letter = movie.title.charAt(0).toUpperCase() || '#'
+    return /[A-Z]/.test(letter) ? letter : '#'
+  }
+
+  return movie.year || '----'
+}
+
 const getGenreSummaries = (movies: TestMovie[]): GenreSummary[] => {
   const counts = movies.reduce<Record<string, number>>((summary, movie) => {
     movie.genres.forEach((genre) => {
@@ -408,7 +537,7 @@ const mapMovie = (raw: RawMovie, index: number): TestMovie => {
   const rawId = getText(raw, 'id')
   const posterPath = getText(raw, 'poster_path')
   const title = getText(raw, 'title') || `Untitled ${index + 1}`
-  const fallbackPosterUrl = getFallbackPosterUrl(index + 1)
+  const fallbackPosterUrl = getFallbackPosterUrl(index + 1, title, year)
 
   return {
     id: rawId ? `${index}-${rawId}` : String(index),
@@ -476,10 +605,14 @@ export const TestGalleryApp = () => {
   )
   const [selectedRuntimeFilter, setSelectedRuntimeFilter] =
     useState<RuntimeFilter | null>(null)
+  const [contentFilter, setContentFilter] = useState<ContentFilter>('all')
   const [listSearchQuery, setListSearchQuery] = useState('')
   const [filterOpen, setFilterOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [aboutMaximized, setAboutMaximized] = useState(false)
+  const [initialGalleryReady, setInitialGalleryReady] = useState(
+    Boolean(cachedMovieDataset?.length),
+  )
   const [loadState, setLoadState] = useState<LoadState>(
     cachedMovieDataset ? 'ready' : 'loading',
   )
@@ -548,12 +681,19 @@ export const TestGalleryApp = () => {
   const selectedFilterCount =
     selectedGenres.length +
     selectedMoodFilters.length +
-    (selectedRuntimeFilter ? 1 : 0)
+    (selectedRuntimeFilter ? 1 : 0) +
+    (contentFilter !== 'all' ? 1 : 0)
 
   const visibleMovies = useMemo(
     () => getGalleryWindow(filteredMovies, selectedGenres),
     [filteredMovies, selectedGenres],
   )
+
+  const handleGalleryReady = useCallback(() => {
+    if (loadState === 'ready' && visibleMovies.length) {
+      setInitialGalleryReady(true)
+    }
+  }, [loadState, visibleMovies.length])
 
   useEffect(() => {
     if (mode !== 'wall') return
@@ -603,6 +743,10 @@ export const TestGalleryApp = () => {
     () => movies.find((movie) => movie.id === watchMovieId) ?? null,
     [movies, watchMovieId],
   )
+  const filterPresence = useExitPresence(filterOpen)
+  const aboutPresence = useExitPresence(aboutOpen)
+  const watchPresence = useExitPresence(Boolean(watchMovie), watchMovie)
+  const detailsPresence = useExitPresence(Boolean(detailsMovie), detailsMovie)
 
   const toggleGenre = useCallback((genre: string) => {
     setSelectedGenres((currentGenres) =>
@@ -614,6 +758,7 @@ export const TestGalleryApp = () => {
 
   const clearGenres = useCallback(() => setSelectedGenres([]), [])
   const clearAllFilters = useCallback(() => {
+    setContentFilter('all')
     setSelectedGenres([])
     setSelectedMoodFilters([])
     setSelectedRuntimeFilter(null)
@@ -636,6 +781,15 @@ export const TestGalleryApp = () => {
       currentFilter === runtimeFilter ? null : runtimeFilter,
     )
   }, [])
+
+  const selectContentFilter = useCallback(
+    (nextContentFilter: ContentFilter) => {
+      if (nextContentFilter === 'series') return
+      setContentFilter(nextContentFilter)
+      setSelectedRuntimeFilter(null)
+    },
+    [],
+  )
 
   const handleOpenMovie = useCallback((movie: TestMovie) => {
     setActiveMovieId(movie.id)
@@ -674,8 +828,9 @@ export const TestGalleryApp = () => {
   return (
     <main
       className='phantom-test-shell warp-shell min-h-dvh overflow-hidden bg-black text-white'
-      data-details-open={detailsMovieId ? 'true' : 'false'}
-      data-filter-open={filterOpen ? 'true' : 'false'}
+      data-details-open={detailsPresence.isPresent ? 'true' : 'false'}
+      data-filter-open={filterPresence.isPresent ? 'true' : 'false'}
+      data-gallery-ready={initialGalleryReady ? 'true' : 'false'}
       data-mode={mode}
       onMouseMove={(event) => {
         const x = event.clientX / Math.max(window.innerWidth, 1) - 0.5
@@ -690,6 +845,7 @@ export const TestGalleryApp = () => {
           isDetailsOpen={Boolean(detailsMovieId)}
           loadState={loadState}
           movies={visibleMovies}
+          onReady={handleGalleryReady}
           onOpenMovie={handleOpenMovie}
           onSelectMovie={handleSelectMovie}
         />
@@ -763,11 +919,20 @@ export const TestGalleryApp = () => {
         }}
       />
 
+      {mode === 'wall' && !initialGalleryReady ? (
+        <output className='warp-gallery-preloader' aria-live='polite'>
+          <span>Building gallery</span>
+        </output>
+      ) : null}
+
       <div className='warp-filter-actions'>
-        {filterOpen && selectedFilterCount ? (
+        {filterPresence.isPresent && selectedFilterCount ? (
           <button
             type='button'
-            className='warp-filter-reset'
+            className={cn(
+              'warp-filter-reset',
+              filterPresence.motionPhase === 'exit' && 'is-exiting',
+            )}
             aria-label='Reset filters'
             onClick={clearAllFilters}
           >
@@ -798,25 +963,29 @@ export const TestGalleryApp = () => {
         </button>
       </div>
 
-      {filterOpen ? (
+      {filterPresence.isPresent ? (
         <FilterPanel
           broadened={decisionFilterResult.broadened}
           genres={genreSummaries}
+          motionPhase={filterPresence.motionPhase}
           resultCount={filteredMovies.length}
+          contentFilter={contentFilter}
           runtimeFilter={selectedRuntimeFilter}
           selectedGenres={selectedGenres}
           selectedMoodFilters={selectedMoodFilters}
           strictResultCount={decisionFilterResult.strictCount}
           onClear={clearAllFilters}
+          onSelectContentFilter={selectContentFilter}
           onToggleRuntimeFilter={toggleRuntimeFilter}
           onToggleGenre={toggleGenre}
           onToggleMoodFilter={toggleMoodFilter}
         />
       ) : null}
 
-      {aboutOpen ? (
+      {aboutPresence.isPresent ? (
         <AboutDrawer
           maximized={aboutMaximized}
+          motionPhase={aboutPresence.motionPhase}
           onClose={() => setAboutOpen(false)}
           onToggleMaximized={() =>
             setAboutMaximized((isMaximized) => !isMaximized)
@@ -824,17 +993,21 @@ export const TestGalleryApp = () => {
         />
       ) : null}
 
-      {watchMovie ? (
+      {watchPresence.isPresent && watchPresence.value ? (
         <WatchLinksDialog
-          movie={watchMovie}
+          motionPhase={watchPresence.motionPhase}
+          movie={watchPresence.value}
           onClose={() => setWatchMovieId(null)}
         />
       ) : null}
 
-      {detailsMovie ? (
+      {detailsPresence.isPresent && detailsPresence.value ? (
         <MovieDetailsCard
-          movie={detailsMovie}
+          movies={movies}
+          motionPhase={detailsPresence.motionPhase}
+          movie={detailsPresence.value}
           onClose={() => setDetailsMovieId(null)}
+          onOpenMovie={handleOpenMovie}
           onSelectGenre={(genre) => {
             setSelectedGenres([genre])
             setDetailsMovieId(null)
@@ -851,6 +1024,7 @@ type WarpWallProps = {
   isDetailsOpen: boolean
   loadState: LoadState
   movies: TestMovie[]
+  onReady: () => void
   onOpenMovie: (movie: TestMovie) => void
   onSelectMovie: (movie: TestMovie) => void
 }
@@ -860,6 +1034,7 @@ const WarpWall = ({
   isDetailsOpen,
   loadState,
   movies,
+  onReady,
   onOpenMovie,
   onSelectMovie,
 }: WarpWallProps) => {
@@ -868,10 +1043,10 @@ const WarpWall = ({
       movies.map((movie) => ({
         id: movie.id,
         fallbackImage: movie.fallbackPosterUrl,
-        image: movie.fallbackPosterUrl,
+        image: movie.posterUrl,
         title: movie.title,
         description:
-          movie.genres.slice(0, 2).join(' / ') || movie.overview || 'Movie',
+          movie.genres.slice(0, 2).join(' | ') || movie.overview || 'Movie',
         meta: formatMovieMeta(movie),
         payload: movie,
       })),
@@ -903,6 +1078,7 @@ const WarpWall = ({
         isDetailsOpen={isDetailsOpen}
         items={menuItems}
         loadState={loadState}
+        onReady={onReady}
         scale={0.9}
         onActiveItemChange={handleActiveItemChange}
         onSelectItem={handleSelectItem}
@@ -944,6 +1120,9 @@ const WarpList = ({
 }: WarpListProps) => {
   const [randomPulseId, setRandomPulseId] = useState<string | null>(null)
   const [isSearchOpen, setIsSearchOpen] = useState(false)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(
+    () => new Set(),
+  )
   const pulseTimerRef = useRef<number | null>(null)
   const searchInputRef = useRef<HTMLInputElement | null>(null)
 
@@ -972,14 +1151,44 @@ const WarpList = ({
   }, [isSearchOpen])
 
   const clearSearch = () => {
+    setCollapsedGroups(new Set())
     onSearchQueryChange('')
     searchInputRef.current?.focus()
+  }
+
+  const handleGroupingChange = (nextGrouping: ListGrouping) => {
+    setCollapsedGroups(new Set())
+    onGroupingChange(nextGrouping)
+  }
+
+  const handleSearchQueryChange = (nextSearchQuery: string) => {
+    setCollapsedGroups(new Set())
+    onSearchQueryChange(nextSearchQuery)
+  }
+
+  const toggleCollapsedGroup = (group: string) => {
+    setCollapsedGroups((currentGroups) => {
+      const nextGroups = new Set(currentGroups)
+      if (nextGroups.has(group)) {
+        nextGroups.delete(group)
+      } else {
+        nextGroups.add(group)
+      }
+      return nextGroups
+    })
   }
 
   const handlePickRandomMovie = () => {
     const movie = movies[Math.floor(Math.random() * Math.max(movies.length, 1))]
     if (!movie) return
 
+    const movieGroup = getMovieListGroupKey(movie, grouping)
+    setCollapsedGroups((currentGroups) => {
+      if (!currentGroups.has(movieGroup)) return currentGroups
+      const nextGroups = new Set(currentGroups)
+      nextGroups.delete(movieGroup)
+      return nextGroups
+    })
     onPickRandomMovie(movie)
     setRandomPulseId(movie.id)
     if (pulseTimerRef.current) window.clearTimeout(pulseTimerRef.current)
@@ -989,31 +1198,36 @@ const WarpList = ({
     }, 1100)
 
     window.requestAnimationFrame(() => {
-      const scroller = document.querySelector<HTMLElement>('.warp-list')
-      const row = document.querySelector<HTMLElement>(
-        `[data-movie-id="${movie.id}"]`,
-      )
-      if (!scroller || !row) return
+      window.requestAnimationFrame(() => {
+        const scroller = document.querySelector<HTMLElement>('.warp-list')
+        const row = document.querySelector<HTMLElement>(
+          `[data-movie-id="${movie.id}"]`,
+        )
+        if (!scroller || !row) return
 
-      const startTop = scroller.scrollTop
-      const maxTop = Math.max(0, scroller.scrollHeight - scroller.clientHeight)
-      const targetTop = Math.max(
-        0,
-        Math.min(
-          maxTop,
-          row.offsetTop - scroller.clientHeight / 2 + row.clientHeight / 2,
-        ),
-      )
-      const duration = 520
-      const startTime = performance.now()
-      const animateScroll = (time: number) => {
-        const progress = Math.min(1, (time - startTime) / duration)
-        const eased = 1 - (1 - progress) ** 3
-        scroller.scrollTop = startTop + (targetTop - startTop) * eased
-        if (progress < 1) window.requestAnimationFrame(animateScroll)
-      }
+        const startTop = scroller.scrollTop
+        const maxTop = Math.max(
+          0,
+          scroller.scrollHeight - scroller.clientHeight,
+        )
+        const targetTop = Math.max(
+          0,
+          Math.min(
+            maxTop,
+            row.offsetTop - scroller.clientHeight / 2 + row.clientHeight / 2,
+          ),
+        )
+        const duration = 520
+        const startTime = performance.now()
+        const animateScroll = (time: number) => {
+          const progress = Math.min(1, (time - startTime) / duration)
+          const eased = 1 - (1 - progress) ** 3
+          scroller.scrollTop = startTop + (targetTop - startTop) * eased
+          if (progress < 1) window.requestAnimationFrame(animateScroll)
+        }
 
-      window.requestAnimationFrame(animateScroll)
+        window.requestAnimationFrame(animateScroll)
+      })
     })
   }
 
@@ -1025,7 +1239,7 @@ const WarpList = ({
             type='button'
             className={cn(grouping === 'year' && 'is-active')}
             aria-pressed={grouping === 'year'}
-            onClick={() => onGroupingChange('year')}
+            onClick={() => handleGroupingChange('year')}
           >
             By year
           </button>
@@ -1033,7 +1247,7 @@ const WarpList = ({
             type='button'
             className={cn(grouping === 'alpha' && 'is-active')}
             aria-pressed={grouping === 'alpha'}
-            onClick={() => onGroupingChange('alpha')}
+            onClick={() => handleGroupingChange('alpha')}
           >
             Alphabetical
           </button>
@@ -1066,12 +1280,12 @@ const WarpList = ({
             value={searchQuery}
             placeholder='Search titles'
             aria-label='Search movie titles'
-            onChange={(event) => onSearchQueryChange(event.target.value)}
+            onChange={(event) => handleSearchQueryChange(event.target.value)}
             onFocus={() => setIsSearchOpen(true)}
             onKeyDown={(event) => {
               if (event.key !== 'Escape') return
               if (searchQuery) {
-                onSearchQueryChange('')
+                handleSearchQueryChange('')
                 return
               }
               setIsSearchOpen(false)
@@ -1133,45 +1347,86 @@ const WarpList = ({
         </div>
       ) : (
         <div className='warp-list-groups'>
-          {groupedMovies.map(([year, yearMovies]) => (
-            <section className='warp-list-group' key={year}>
-              <h2>{year}</h2>
-              <div className='warp-list-rows'>
-                {yearMovies.map((movie) => (
-                  <button
-                    type='button'
-                    key={movie.id}
-                    data-movie-id={movie.id}
-                    className={cn(
-                      'warp-list-row',
-                      activeMovieId === movie.id && 'is-active',
-                      randomPulseId === movie.id && 'is-random-pulse',
-                    )}
-                    onClick={() => onOpenMovie(movie)}
-                    onFocus={() => onSelectMovie(movie)}
-                    onMouseEnter={() => onSelectMovie(movie)}
-                  >
-                    <span className='warp-list-row-poster' aria-hidden='true'>
-                      <MoviePoster movie={movie} />
-                    </span>
-                    <span className='warp-list-row-main'>
-                      <span className='warp-list-row-title'>{movie.title}</span>
-                      <span className='warp-list-row-meta'>
-                        {formatMovieMeta(movie)}
+          {groupedMovies.map(([group, groupMovies]) => {
+            const isCollapsed = collapsedGroups.has(group)
+            return (
+              <section
+                className={cn('warp-list-group', isCollapsed && 'is-collapsed')}
+                key={group}
+              >
+                <button
+                  type='button'
+                  className='warp-list-group-heading'
+                  aria-expanded={!isCollapsed}
+                  onClick={() => toggleCollapsedGroup(group)}
+                >
+                  <span>
+                    <h2>{group}</h2>
+                    <small>
+                      {groupMovies.length}{' '}
+                      {groupMovies.length === 1 ? 'title' : 'titles'}
+                    </small>
+                  </span>
+                  {isCollapsed ? (
+                    <ChevronRight
+                      aria-hidden='true'
+                      size={18}
+                      strokeWidth={2.8}
+                    />
+                  ) : (
+                    <ChevronDown
+                      aria-hidden='true'
+                      size={18}
+                      strokeWidth={2.8}
+                    />
+                  )}
+                </button>
+                <div
+                  className='warp-list-rows'
+                  aria-hidden={isCollapsed || undefined}
+                  style={
+                    { '--group-row-count': groupMovies.length } as CSSProperties
+                  }
+                >
+                  {groupMovies.map((movie) => (
+                    <button
+                      type='button'
+                      key={movie.id}
+                      data-movie-id={movie.id}
+                      className={cn(
+                        'warp-list-row',
+                        activeMovieId === movie.id && 'is-active',
+                        randomPulseId === movie.id && 'is-random-pulse',
+                      )}
+                      tabIndex={isCollapsed ? -1 : undefined}
+                      onClick={() => onOpenMovie(movie)}
+                      onFocus={() => onSelectMovie(movie)}
+                      onMouseEnter={() => onSelectMovie(movie)}
+                    >
+                      <span className='warp-list-row-poster' aria-hidden='true'>
+                        <MoviePoster movie={movie} />
                       </span>
-                    </span>
-                    <span className='warp-list-row-genres'>
-                      {(movie.genres.length ? movie.genres : ['Movie'])
-                        .slice(0, 3)
-                        .map((genre) => (
-                          <span key={genre}>{genre}</span>
-                        ))}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </section>
-          ))}
+                      <span className='warp-list-row-main'>
+                        <span className='warp-list-row-title'>
+                          {movie.title}
+                        </span>
+                        <span className='warp-list-row-meta'>
+                          {formatMovieMeta(movie)}
+                        </span>
+                      </span>
+                      <span className='warp-list-row-genres'>
+                        {(movie.genres.length ? movie.genres : ['Movie'])
+                          .slice(0, 3)
+                          .map((genre) => (
+                            <span key={genre}>{genre}</span>
+                          ))}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )
+          })}
         </div>
       )}
     </section>
@@ -1243,7 +1498,7 @@ const WarpChrome = ({
       <span>{activeMovie?.title ?? 'Loading'}</span>
       <span>
         {activeMovie
-          ? `${formatMovieMeta(activeMovie)} / ${movieCount} indexed`
+          ? `${formatMovieMeta(activeMovie)} | ${movieCount} indexed`
           : `${movieCount} loading`}
       </span>
     </div>
@@ -1301,13 +1556,16 @@ const WarpChrome = ({
 
 type FilterPanelProps = {
   broadened: boolean
+  contentFilter: ContentFilter
   genres: GenreSummary[]
+  motionPhase: MotionPhase
   resultCount: number
   runtimeFilter: RuntimeFilter | null
   selectedGenres: string[]
   selectedMoodFilters: MoodFilter[]
   strictResultCount: number
   onClear: () => void
+  onSelectContentFilter: (contentFilter: ContentFilter) => void
   onToggleRuntimeFilter: (runtimeFilter: RuntimeFilter) => void
   onToggleGenre: (genre: string) => void
   onToggleMoodFilter: (moodFilter: MoodFilter) => void
@@ -1315,47 +1573,72 @@ type FilterPanelProps = {
 
 const FilterPanel = ({
   broadened,
+  contentFilter,
   genres,
+  motionPhase,
   resultCount,
   runtimeFilter,
   selectedGenres,
   selectedMoodFilters,
   strictResultCount,
   onClear,
+  onSelectContentFilter,
   onToggleRuntimeFilter,
   onToggleGenre,
   onToggleMoodFilter,
 }: FilterPanelProps) => (
-  <aside className='warp-filter-panel'>
+  <aside className='warp-filter-panel' data-motion={motionPhase}>
     <div className='warp-filter-panel-heading'>
-      <p>Stack filters</p>
+      <p>Add filters</p>
       <span>
         {resultCount} {broadened ? 'broadened' : 'matches'}
       </span>
     </div>
-    <button
-      type='button'
-      className={cn(
-        !selectedGenres.length &&
-          !selectedMoodFilters.length &&
-          !runtimeFilter &&
-          'is-active',
-      )}
-      onClick={onClear}
-    >
-      All movies
-    </button>
+    <div className='warp-content-filter' aria-label='Content type'>
+      {CONTENT_FILTERS.map((filter) => (
+        <button
+          type='button'
+          className={cn(
+            contentFilter === filter.id &&
+              (filter.id !== 'all' ||
+                (!selectedGenres.length &&
+                  !selectedMoodFilters.length &&
+                  !runtimeFilter)) &&
+              'is-active',
+            filter.disabled && 'is-disabled',
+          )}
+          key={filter.id}
+          aria-disabled={filter.disabled || undefined}
+          aria-pressed={contentFilter === filter.id}
+          disabled={filter.disabled}
+          title={filter.disabled ? filter.meta : undefined}
+          onClick={() =>
+            filter.id === 'all' ? onClear() : onSelectContentFilter(filter.id)
+          }
+        >
+          <span>{filter.label}</span>
+          {filter.meta ? <span>{filter.meta}</span> : null}
+        </button>
+      ))}
+    </div>
     {broadened ? (
       <p className='warp-filter-note'>
         Broadened from {strictResultCount} exact matches to keep the wall full.
       </p>
     ) : null}
     <div className='warp-filter-panel-section'>
-      <p>Runtime</p>
-      {RUNTIME_FILTERS.map((filter) => (
+      <p>{contentFilter === 'series' ? 'Episode runtime' : 'Movie runtime'}</p>
+      {(contentFilter === 'series'
+        ? SERIES_RUNTIME_FILTERS
+        : MOVIE_RUNTIME_FILTERS
+      ).map((filter) => (
         <button
           type='button'
-          className={cn(runtimeFilter === filter.id && 'is-active')}
+          className={cn(
+            runtimeFilter === filter.id && 'is-active',
+            filter.disabled && 'is-disabled',
+          )}
+          disabled={filter.disabled}
           key={filter.id}
           aria-pressed={runtimeFilter === filter.id}
           onClick={() => onToggleRuntimeFilter(filter.id)}
@@ -1458,16 +1741,21 @@ const GenresView = ({
 
 type AboutDrawerProps = {
   maximized: boolean
+  motionPhase: MotionPhase
   onClose: () => void
   onToggleMaximized: () => void
 }
 
 const AboutDrawer = ({
   maximized,
+  motionPhase,
   onClose,
   onToggleMaximized,
 }: AboutDrawerProps) => (
-  <aside className={cn('warp-about-drawer', maximized && 'is-maximized')}>
+  <aside
+    className={cn('warp-about-drawer', maximized && 'is-maximized')}
+    data-motion={motionPhase}
+  >
     <button
       type='button'
       className='warp-about-handle'
@@ -1510,13 +1798,19 @@ const WATCH_LINKS = [
 ]
 
 type WatchLinksDialogProps = {
+  motionPhase: MotionPhase
   movie: TestMovie
   onClose: () => void
 }
 
-const WatchLinksDialog = ({ movie, onClose }: WatchLinksDialogProps) => (
+const WatchLinksDialog = ({
+  motionPhase,
+  movie,
+  onClose,
+}: WatchLinksDialogProps) => (
   <section
     className='warp-watch-layer'
+    data-motion={motionPhase}
     aria-label={`${movie.title} watch links`}
   >
     <button
@@ -1555,14 +1849,20 @@ const WatchLinksDialog = ({ movie, onClose }: WatchLinksDialogProps) => (
 )
 
 type MovieDetailsCardProps = {
+  movies: TestMovie[]
+  motionPhase: MotionPhase
   movie: TestMovie
   onClose: () => void
+  onOpenMovie: (movie: TestMovie) => void
   onSelectGenre: (genre: string) => void
 }
 
 const MovieDetailsCard = ({
+  movies,
+  motionPhase,
   movie,
   onClose,
+  onOpenMovie,
   onSelectGenre,
 }: MovieDetailsCardProps) => {
   const [isExpanded, setIsExpanded] = useState(false)
@@ -1612,6 +1912,11 @@ const MovieDetailsCard = ({
       return
     }
 
+    if (isExpanded && deltaY > DETAILS_EXPAND_DRAG_PX) {
+      setIsExpanded(false)
+      return
+    }
+
     if (deltaY > DETAILS_CLOSE_DRAG_PX) {
       onClose()
     }
@@ -1625,10 +1930,35 @@ const MovieDetailsCard = ({
   const detailsStyle = {
     '--details-drag-y': `${dragOffset}px`,
   } as CSSProperties
+  const similarMovies = useMemo(() => {
+    const currentGenres = new Set(movie.genres)
+    return movies
+      .filter(
+        (candidateMovie) =>
+          candidateMovie.id !== movie.id &&
+          candidateMovie.genres.some((genre) => currentGenres.has(genre)),
+      )
+      .map((candidateMovie) => ({
+        movie: candidateMovie,
+        overlap: candidateMovie.genres.filter((genre) =>
+          currentGenres.has(genre),
+        ).length,
+      }))
+      .sort(
+        (candidateA, candidateB) =>
+          candidateB.overlap - candidateA.overlap ||
+          (candidateB.movie.ratingValue ?? 0) -
+            (candidateA.movie.ratingValue ?? 0) ||
+          candidateA.movie.rank - candidateB.movie.rank,
+      )
+      .slice(0, 6)
+      .map(({ movie: similarMovie }) => similarMovie)
+  }, [movie.genres, movie.id, movies])
 
   return (
     <section
       className='warp-details-layer'
+      data-motion={motionPhase}
       aria-label={`${movie.title} details`}
       onWheel={handleWheel}
     >
@@ -1638,22 +1968,24 @@ const MovieDetailsCard = ({
         aria-label='Close details'
         onClick={onClose}
       />
-      <article
+      <button
+        type='button'
+        className='warp-details-close'
+        aria-label='Close details'
+        onClick={onClose}
+      >
+        <X aria-hidden='true' size={18} strokeWidth={3} />
+      </button>
+      <dialog
+        open
         className={cn(
           'warp-details-card',
           isExpanded && 'is-expanded',
           dragOffset !== 0 && 'is-dragging',
         )}
         style={detailsStyle}
+        aria-modal='true'
       >
-        <button
-          type='button'
-          className='warp-details-close'
-          aria-label='Close details'
-          onClick={onClose}
-        >
-          <X aria-hidden='true' size={18} strokeWidth={3} />
-        </button>
         <div
           className='warp-details-grip-zone'
           onPointerCancel={handleDragEnd}
@@ -1664,7 +1996,7 @@ const MovieDetailsCard = ({
           <span className='warp-details-handle' />
         </div>
         <div className='warp-details-poster'>
-          <MoviePoster fallbackDelayMs={450} loading='eager' movie={movie} />
+          <MoviePoster loading='eager' movie={movie} />
         </div>
         <div className='warp-details-copy'>
           <div className='warp-details-copy-scroll'>
@@ -1688,19 +2020,94 @@ const MovieDetailsCard = ({
               ))}
             </div>
             <p className='warp-details-origin'>{movie.countries || 'Cinema'}</p>
+            {isExpanded ? (
+              <div className='warp-details-expanded-content'>
+                <section
+                  className='warp-details-facts'
+                  aria-label='Movie details'
+                >
+                  <header>
+                    <h3>Details</h3>
+                    <span>Catalog rank #{movie.rank}</span>
+                  </header>
+                  <dl>
+                    <div>
+                      <dt>Year</dt>
+                      <dd>
+                        {movie.year && movie.year !== '----' ? movie.year : '-'}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Rating</dt>
+                      <dd>{movie.ratingValue ? movie.rating : '-'}</dd>
+                    </div>
+                    <div>
+                      <dt>Hour</dt>
+                      <dd>
+                        {formatRuntime(movie.runtime, movie.runtimeMinutes)}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>Origin</dt>
+                      <dd>{movie.countries || '-'}</dd>
+                    </div>
+                  </dl>
+                  <p>
+                    {movie.overview ||
+                      'No additional description is available for this title yet.'}
+                  </p>
+                </section>
+
+                {similarMovies.length ? (
+                  <section
+                    className='warp-details-similar'
+                    aria-label='Similar movies'
+                  >
+                    <header>
+                      <h3>Similar movies</h3>
+                      <span>{movie.genres.slice(0, 2).join(' | ')}</span>
+                    </header>
+                    <div className='warp-details-similar-list'>
+                      {similarMovies.map((similarMovie) => (
+                        <button
+                          type='button'
+                          key={similarMovie.id}
+                          onClick={() => onOpenMovie(similarMovie)}
+                        >
+                          <span className='warp-details-similar-poster'>
+                            <MoviePoster movie={similarMovie} />
+                          </span>
+                          <span className='warp-details-similar-copy'>
+                            <strong>{similarMovie.title}</strong>
+                            <span>{formatMovieMeta(similarMovie)}</span>
+                            <em>
+                              {similarMovie.overview ||
+                                'No overview available yet.'}
+                            </em>
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
-        {!isExpanded ? (
-          <button
-            type='button'
-            className='warp-details-more'
-            onClick={() => setIsExpanded(true)}
-          >
-            <span>More details</span>
+        <button
+          type='button'
+          className='warp-details-more'
+          aria-expanded={isExpanded}
+          onClick={() => setIsExpanded((expanded) => !expanded)}
+        >
+          <span>{isExpanded ? 'Show less' : 'Similar movies'}</span>
+          {isExpanded ? (
+            <ChevronsUp aria-hidden='true' size={17} strokeWidth={2.8} />
+          ) : (
             <ChevronsDown aria-hidden='true' size={17} strokeWidth={2.8} />
-          </button>
-        ) : null}
-      </article>
+          )}
+        </button>
+      </dialog>
     </section>
   )
 }

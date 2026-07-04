@@ -11,6 +11,8 @@ import {
   sortMoviesForList,
 } from './test-gallery'
 
+const CHINESE_COMEDY_TITLE = '分手大师'
+
 const movie = (
   id: string,
   title: string,
@@ -40,7 +42,7 @@ describe('test gallery filtering helpers', () => {
     movie('2', 'Before Sunrise', '1995', ['Romance', 'Drama'], 2),
     movie('3', 'Only Lovers Left Alive', '2013', ['Horror', 'Romance'], 3),
     movie('4', 'Zodiac', '2007', ['Crime', 'Drama'], 4),
-    movie('5', '分手大师', '2014', ['Romance', 'Comedy'], 5),
+    movie('5', CHINESE_COMEDY_TITLE, '2014', ['Romance', 'Comedy'], 5),
     movie('6', '[Rec]', '2007', ['Horror'], 6),
   ]
 
@@ -61,27 +63,33 @@ describe('test gallery filtering helpers', () => {
       filterMoviesByDecisionFilters(movies, ['funny'], null).movies.map(
         (item) => item.title,
       ),
-    ).toEqual(['åˆ†æ‰‹å¤§å¸ˆ'])
+    ).toEqual([CHINESE_COMEDY_TITLE])
 
     expect(
       filterMoviesByDecisionFilters(
         [
-          { ...movies[0], runtimeMinutes: 88 },
+          { ...movies[0], runtimeMinutes: 48 },
           { ...movies[1], runtimeMinutes: 122 },
           { ...movies[2], runtimeMinutes: 151 },
         ],
         [],
-        'under90',
+        'movie30to60',
       ).movies.map((item) => item.title),
     ).toEqual(['A Quiet Place'])
   })
 
   it('broadens sparse decision filter results without duplicating movies', () => {
-    const result = filterMoviesByDecisionFilters(movies, ['funny'], 'under90')
+    const result = filterMoviesByDecisionFilters(
+      movies,
+      ['funny'],
+      'movie30to60',
+    )
 
     expect(result.broadened).toBe(true)
     expect(result.strictCount).toBe(0)
-    expect(result.movies.map((item) => item.title)).toEqual(['åˆ†æ‰‹å¤§å¸ˆ'])
+    expect(result.movies.map((item) => item.title)).toEqual([
+      CHINESE_COMEDY_TITLE,
+    ])
   })
 
   it('ranks movies with the strongest overlap first in the gallery window', () => {
@@ -96,12 +104,12 @@ describe('test gallery filtering helpers', () => {
   it('sorts list mode chronologically or alphabetically', () => {
     expect(
       sortMoviesForList(movies, 'year').map((item) => item.title),
-    ).toContain('分手大师')
+    ).toContain(CHINESE_COMEDY_TITLE)
     expect(sortMoviesForList(movies, 'year')[0].title).toBe('Before Sunrise')
     expect(sortMoviesForList(movies, 'alpha')[0].title).toBe('A Quiet Place')
     expect(
       sortMoviesForList(movies, 'alpha').map((item) => item.title),
-    ).not.toContain('分手大师')
+    ).not.toContain(CHINESE_COMEDY_TITLE)
     expect(
       sortMoviesForList(movies, 'alpha').map((item) => item.title),
     ).not.toContain('[Rec]')
@@ -114,7 +122,7 @@ describe('test gallery filtering helpers', () => {
 
   it('formats movie metadata consistently with explicit missing states', () => {
     expect(formatMovieMeta(movies[0])).toBe(
-      'Year: 2018 / Rating: 7.0 / Runtime: 1h 40m',
+      'Year: 2018 | Rating: 7.0 | Hour: 1:40',
     )
 
     expect(
@@ -126,6 +134,6 @@ describe('test gallery filtering helpers', () => {
         runtimeMinutes: null,
         year: '----',
       }),
-    ).toBe('Year: Year TBA / Rating: Unrated / Runtime: Runtime TBA')
+    ).toBe('Year: - | Rating: - | Hour: -')
   })
 })

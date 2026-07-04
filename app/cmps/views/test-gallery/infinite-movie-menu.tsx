@@ -25,6 +25,7 @@ type InfiniteMovieMenuProps<T> = {
   loadState: 'loading' | 'ready' | 'error'
   scale?: number
   onActiveItemChange: (item: InfiniteMovieMenuItem<T>) => void
+  onReady?: () => void
   onSelectItem: (item: InfiniteMovieMenuItem<T>) => void
 }
 
@@ -37,7 +38,7 @@ const SPHERE_RADIUS = 2.58
 const TARGET_FRAME_DURATION = 1000 / 60
 const ICON_TEXTURE_CELL_SIZE = 192
 const ICON_TEXTURE_PADDING = 12
-const ICON_INSTANCE_COUNT = 750
+const ICON_INSTANCE_COUNT = 1000
 const ICON_REST_SCALE = 0.18
 const ICON_DETAIL_SCALE = 0.34
 const DETAIL_CLICK_OPEN_DELAY_MS = 0
@@ -1001,18 +1002,44 @@ class InfiniteMovieEngine<T> {
 
     uploadAtlas()
     this.items.forEach((item, index) => {
+      const x = (index % this.atlasSize) * this.atlasCellSize
+      const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
+      this.drawPosterPlaceholder(
+        context,
+        item,
+        x,
+        y,
+        this.atlasCellSize,
+        this.atlasCellSize,
+        index,
+      )
+    })
+    uploadAtlas()
+    this.items.forEach((item, index) => {
       void this.loadImage(item.image, item.fallbackImage).then((image) => {
         if (this.disposed || !this.texture) return
         const x = (index % this.atlasSize) * this.atlasCellSize
         const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
-        this.drawImageCover(
-          context,
-          image,
-          x,
-          y,
-          this.atlasCellSize,
-          this.atlasCellSize,
-        )
+        if (image.naturalWidth && image.naturalHeight) {
+          this.drawImageCover(
+            context,
+            image,
+            x,
+            y,
+            this.atlasCellSize,
+            this.atlasCellSize,
+          )
+        } else {
+          this.drawPosterPlaceholder(
+            context,
+            item,
+            x,
+            y,
+            this.atlasCellSize,
+            this.atlasCellSize,
+            index,
+          )
+        }
         scheduleAtlasUpload()
       })
     })
@@ -1060,6 +1087,67 @@ class InfiniteMovieEngine<T> {
       y,
       width,
       height,
+    )
+  }
+
+  private drawPosterPlaceholder(
+    context: CanvasRenderingContext2D,
+    item: InfiniteMovieMenuItem<T>,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    index: number,
+  ) {
+    const hue = Math.round(((index * 47) % 360) + 12)
+    const gradient = context.createLinearGradient(x, y, x + width, y + height)
+    gradient.addColorStop(0, `hsl(${hue} 32% 24%)`)
+    gradient.addColorStop(0.55, '#101010')
+    gradient.addColorStop(1, `hsl(${(hue + 48) % 360} 34% 17%)`)
+    context.fillStyle = gradient
+    context.fillRect(x, y, width, height)
+
+    context.fillStyle = 'rgba(255,255,255,0.12)'
+    context.beginPath()
+    context.arc(
+      x + width * 0.72,
+      y + height * 0.22,
+      width * 0.24,
+      0,
+      Math.PI * 2,
+    )
+    context.fill()
+
+    context.fillStyle = 'rgba(0,0,0,0.18)'
+    context.fillRect(
+      x + width * 0.1,
+      y + height * 0.1,
+      width * 0.8,
+      height * 0.8,
+    )
+
+    const words = item.title.split(/\s+/).filter(Boolean).slice(0, 4)
+    const titleLines = words.length ? words : ['Movie']
+    context.fillStyle = 'rgba(255,255,255,0.88)'
+    context.font = `900 ${Math.max(13, Math.round(width * 0.088))}px Arial, sans-serif`
+    context.textBaseline = 'bottom'
+    context.textAlign = 'left'
+    titleLines.slice(0, 3).forEach((word, lineIndex, lines) => {
+      context.fillText(
+        word.slice(0, 12),
+        x + width * 0.14,
+        y + height * (0.78 - (lines.length - lineIndex - 1) * 0.12),
+        width * 0.72,
+      )
+    })
+
+    context.fillStyle = 'rgba(255,255,255,0.46)'
+    context.font = `800 ${Math.max(9, Math.round(width * 0.052))}px Arial, sans-serif`
+    context.fillText(
+      item.meta.split('|')[0]?.replace('Year: ', '').trim() || item.description,
+      x + width * 0.14,
+      y + height * 0.9,
+      width * 0.72,
     )
   }
 
@@ -1257,6 +1345,7 @@ export const InfiniteMovieMenu = <T,>({
   loadState,
   scale = 1,
   onActiveItemChange,
+  onReady,
   onSelectItem,
 }: InfiniteMovieMenuProps<T>) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
@@ -1292,6 +1381,7 @@ export const InfiniteMovieMenu = <T,>({
     if (!canvas || !items.length) return
 
     let engine: InfiniteMovieEngine<T> | null = null
+    let readyFrameId = 0
     const onResize = () => engine?.resize()
 
     try {
@@ -1308,21 +1398,26 @@ export const InfiniteMovieMenu = <T,>({
       )
       engineRef.current = engine
       engine.run()
+      readyFrameId = window.requestAnimationFrame(() => {
+        onReady?.()
+      })
       window.addEventListener('resize', onResize)
       setWebglError('')
     } catch (error) {
       setWebglError(
         error instanceof Error ? error.message : 'WebGL could not initialize',
       )
+      onReady?.()
     }
 
     return () => {
       window.removeEventListener('resize', onResize)
+      if (readyFrameId) window.cancelAnimationFrame(readyFrameId)
       if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
       engineRef.current = null
       engine?.dispose()
     }
-  }, [items, scale, onActiveItemChange])
+  }, [items, scale, onActiveItemChange, onReady])
 
   useEffect(() => {
     engineRef.current?.setDetailFocus(
@@ -1382,6 +1477,12 @@ export const InfiniteMovieMenu = <T,>({
     const isDesktopWheel =
       window.matchMedia?.('(hover: hover) and (pointer: fine)').matches ?? false
     if (!isDesktopWheel) return
+
+    if (event.deltaY < -10) {
+      event.preventDefault()
+      beginDetailsFlow(activeItemRef.current, 'slow')
+      return
+    }
 
     if (event.deltaY > 10 && openTimerRef.current) {
       event.preventDefault()
