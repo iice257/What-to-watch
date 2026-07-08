@@ -78,6 +78,7 @@ const GALLERY_WINDOW_SIZE = 1000
 const MIN_DECISION_FILTER_RESULTS = 24
 const DETAILS_EXPAND_DRAG_PX = 42
 const DETAILS_CLOSE_DRAG_PX = 68
+const DETAILS_COMPACT_DRAG_PX = 38
 const EXIT_ANIMATION_MS = 220
 const TMDB_POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w342'
 const CONTENT_FILTERS: Array<{
@@ -613,6 +614,9 @@ export const TestGalleryApp = () => {
   const [initialGalleryReady, setInitialGalleryReady] = useState(
     Boolean(cachedMovieDataset?.length),
   )
+  const [galleryLoadPercent, setGalleryLoadPercent] = useState(
+    cachedMovieDataset?.length ? 100 : 0,
+  )
   const [loadState, setLoadState] = useState<LoadState>(
     cachedMovieDataset ? 'ready' : 'loading',
   )
@@ -691,9 +695,17 @@ export const TestGalleryApp = () => {
 
   const handleGalleryReady = useCallback(() => {
     if (loadState === 'ready' && visibleMovies.length) {
+      setGalleryLoadPercent(100)
       setInitialGalleryReady(true)
     }
   }, [loadState, visibleMovies.length])
+
+  const handleGalleryLoadProgress = useCallback((percent: number) => {
+    setGalleryLoadPercent((currentPercent) =>
+      Math.max(currentPercent, Math.round(percent)),
+    )
+    if (percent >= 100) setInitialGalleryReady(true)
+  }, [])
 
   useEffect(() => {
     if (mode !== 'wall') return
@@ -845,6 +857,7 @@ export const TestGalleryApp = () => {
           isDetailsOpen={Boolean(detailsMovieId)}
           loadState={loadState}
           movies={visibleMovies}
+          onLoadProgress={handleGalleryLoadProgress}
           onReady={handleGalleryReady}
           onOpenMovie={handleOpenMovie}
           onSelectMovie={handleSelectMovie}
@@ -921,7 +934,19 @@ export const TestGalleryApp = () => {
 
       {mode === 'wall' && !initialGalleryReady ? (
         <output className='warp-gallery-preloader' aria-live='polite'>
-          <span>Building gallery</span>
+          <span>
+            <strong>Building gallery</strong>
+            <i>
+              <b
+                style={
+                  {
+                    '--gallery-load-percent': `${galleryLoadPercent}%`,
+                  } as CSSProperties
+                }
+              />
+            </i>
+            <small>{galleryLoadPercent}%</small>
+          </span>
         </output>
       ) : null}
 
@@ -1024,6 +1049,7 @@ type WarpWallProps = {
   isDetailsOpen: boolean
   loadState: LoadState
   movies: TestMovie[]
+  onLoadProgress: (percent: number) => void
   onReady: () => void
   onOpenMovie: (movie: TestMovie) => void
   onSelectMovie: (movie: TestMovie) => void
@@ -1034,6 +1060,7 @@ const WarpWall = ({
   isDetailsOpen,
   loadState,
   movies,
+  onLoadProgress,
   onReady,
   onOpenMovie,
   onSelectMovie,
@@ -1043,7 +1070,7 @@ const WarpWall = ({
       movies.map((movie) => ({
         id: movie.id,
         fallbackImage: movie.fallbackPosterUrl,
-        image: movie.posterUrl,
+        image: movie.fallbackPosterUrl,
         title: movie.title,
         description:
           movie.genres.slice(0, 2).join(' | ') || movie.overview || 'Movie',
@@ -1078,6 +1105,7 @@ const WarpWall = ({
         isDetailsOpen={isDetailsOpen}
         items={menuItems}
         loadState={loadState}
+        onLoadProgress={onLoadProgress}
         onReady={onReady}
         scale={0.9}
         onActiveItemChange={handleActiveItemChange}
@@ -1894,7 +1922,7 @@ const MovieDetailsCard = ({
     const startY = dragStartYRef.current
     if (startY === null) return
 
-    const nextOffset = Math.max(-96, Math.min(118, event.clientY - startY))
+    const nextOffset = Math.max(-120, Math.min(140, event.clientY - startY))
     setDragOffset(nextOffset)
   }
 
@@ -1912,7 +1940,7 @@ const MovieDetailsCard = ({
       return
     }
 
-    if (isExpanded && deltaY > DETAILS_EXPAND_DRAG_PX) {
+    if (isExpanded && deltaY > DETAILS_COMPACT_DRAG_PX) {
       setIsExpanded(false)
       return
     }
@@ -1968,14 +1996,6 @@ const MovieDetailsCard = ({
         aria-label='Close details'
         onClick={onClose}
       />
-      <button
-        type='button'
-        className='warp-details-close'
-        aria-label='Close details'
-        onClick={onClose}
-      >
-        <X aria-hidden='true' size={18} strokeWidth={3} />
-      </button>
       <dialog
         open
         className={cn(
@@ -1985,7 +2005,16 @@ const MovieDetailsCard = ({
         )}
         style={detailsStyle}
         aria-modal='true'
+        data-snap={isExpanded ? 'expanded' : 'compact'}
       >
+        <button
+          type='button'
+          className='warp-details-close'
+          aria-label='Close details'
+          onClick={onClose}
+        >
+          <X aria-hidden='true' size={17} strokeWidth={3} />
+        </button>
         <div
           className='warp-details-grip-zone'
           onPointerCancel={handleDragEnd}
@@ -2100,7 +2129,7 @@ const MovieDetailsCard = ({
           aria-expanded={isExpanded}
           onClick={() => setIsExpanded((expanded) => !expanded)}
         >
-          <span>{isExpanded ? 'Show less' : 'Similar movies'}</span>
+          <span>{isExpanded ? 'Less' : 'More'}</span>
           {isExpanded ? (
             <ChevronsUp aria-hidden='true' size={17} strokeWidth={2.8} />
           ) : (

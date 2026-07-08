@@ -1,4 +1,5 @@
 import {
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
   type WheelEvent,
   useCallback,
@@ -25,6 +26,7 @@ type InfiniteMovieMenuProps<T> = {
   loadState: 'loading' | 'ready' | 'error'
   scale?: number
   onActiveItemChange: (item: InfiniteMovieMenuItem<T>) => void
+  onLoadProgress?: (percent: number) => void
   onReady?: () => void
   onSelectItem: (item: InfiniteMovieMenuItem<T>) => void
 }
@@ -47,6 +49,7 @@ const DETAIL_FAST_EASE_MS = 150
 const DETAIL_SLOW_EASE_MS = 820
 const DETAIL_CLOSE_EASE_MS = 420
 const CLICK_MOVE_TOLERANCE_PX = 8
+const FALLBACK_ITEM_COUNT = 128
 
 type DetailMotion = 'fast' | 'slow' | 'close'
 
@@ -719,6 +722,7 @@ class InfiniteMovieEngine<T> {
       item: InfiniteMovieMenuItem<T>,
     ) => void,
     private readonly onMovementChange: (moving: boolean) => void,
+    private readonly onLoadProgress: (percent: number) => void,
   ) {
     const gl = canvas.getContext('webgl2', {
       alpha: true,
@@ -958,6 +962,7 @@ class InfiniteMovieEngine<T> {
     )
 
     const itemCount = Math.max(1, this.items.length)
+    let loadedItemCount = 0
     this.atlasSize = Math.ceil(Math.sqrt(itemCount))
     const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number
     this.atlasCellSize = Math.max(
@@ -988,6 +993,11 @@ class InfiniteMovieEngine<T> {
       gl.bindTexture(gl.TEXTURE_2D, this.texture)
       gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas)
     }
+    const reportProgress = (percent: number) => {
+      const nextPercent = Math.max(0, Math.min(100, Math.round(percent)))
+      this.canvas.dataset.textureProgress = String(nextPercent)
+      this.onLoadProgress(nextPercent)
+    }
 
     let uploadQueued = false
     const scheduleAtlasUpload = () => {
@@ -1001,6 +1011,7 @@ class InfiniteMovieEngine<T> {
     }
 
     uploadAtlas()
+    reportProgress(3)
     this.items.forEach((item, index) => {
       const x = (index % this.atlasSize) * this.atlasCellSize
       const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
@@ -1015,6 +1026,7 @@ class InfiniteMovieEngine<T> {
       )
     })
     uploadAtlas()
+    reportProgress(8)
     this.items.forEach((item, index) => {
       void this.loadImage(item.image, item.fallbackImage).then((image) => {
         if (this.disposed || !this.texture) return
@@ -1040,6 +1052,8 @@ class InfiniteMovieEngine<T> {
             index,
           )
         }
+        loadedItemCount += 1
+        reportProgress(8 + (loadedItemCount / itemCount) * 92)
         scheduleAtlasUpload()
       })
     })
@@ -1049,16 +1063,28 @@ class InfiniteMovieEngine<T> {
     return new Promise<HTMLImageElement>((resolve) => {
       const image = new Image()
       let triedFallback = false
-      image.crossOrigin = 'anonymous'
-      image.onload = () => resolve(image)
-      image.onerror = () => {
-        if (fallbackSrc && fallbackSrc !== src && !triedFallback) {
-          triedFallback = true
-          image.src = fallbackSrc
-          return
-        }
+      let timeoutId = 0
+      let settled = false
+      const finish = () => {
+        if (settled) return
+        settled = true
+        window.clearTimeout(timeoutId)
         resolve(image)
       }
+      const tryFallbackOrFinish = () => {
+        if (fallbackSrc && fallbackSrc !== image.src && !triedFallback) {
+          triedFallback = true
+          window.clearTimeout(timeoutId)
+          image.src = fallbackSrc
+          timeoutId = window.setTimeout(finish, 4500)
+          return
+        }
+        finish()
+      }
+      image.crossOrigin = 'anonymous'
+      image.onload = finish
+      image.onerror = tryFallbackOrFinish
+      timeoutId = window.setTimeout(tryFallbackOrFinish, 6500)
       image.src = src
     })
   }
@@ -1338,6 +1364,61 @@ class InfiniteMovieEngine<T> {
   }
 }
 
+type FallbackMovieMenuProps<T> = {
+  activeId: string | null
+  items: InfiniteMovieMenuItem<T>[]
+  onActiveItemChange: (item: InfiniteMovieMenuItem<T>) => void
+}
+
+const FallbackMovieMenu = <T,>({
+  activeId,
+  items,
+  onActiveItemChange,
+}: FallbackMovieMenuProps<T>) => {
+  const fallbackItems = items.slice(0, FALLBACK_ITEM_COUNT)
+
+  return (
+    <div
+      className='warp-fallback-menu'
+      aria-label='Movie poster gallery fallback'
+    >
+      <div className='warp-fallback-menu-orbit'>
+        {fallbackItems.map((item, index) => {
+          const row = Math.floor(index / 8)
+          const column = index % 8
+          const x = (column - 3.5) * 13.5 + ((row % 2) * 5.5 - 2.75)
+          const y = (row - 7.5) * 8.8
+          const depth = 1 - Math.abs(column - 3.5) / 5.5
+          const scaleValue = 0.76 + depth * 0.32
+          const rotateValue = (column - 3.5) * -6
+          return (
+            <button
+              type='button'
+              key={`${item.id}-${index}`}
+              className={cn(
+                'warp-fallback-tile',
+                item.id === activeId && 'is-active',
+              )}
+              style={
+                {
+                  '--fallback-x': `${x}vw`,
+                  '--fallback-y': `${y}vh`,
+                  '--fallback-scale': scaleValue,
+                  '--fallback-rotate': `${rotateValue}deg`,
+                  '--fallback-delay': `${(index % 18) * -0.32}s`,
+                } as CSSProperties
+              }
+              onClick={() => onActiveItemChange(item)}
+            >
+              <img src={item.image} alt='' loading='lazy' />
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 export const InfiniteMovieMenu = <T,>({
   activeId,
   isDetailsOpen,
@@ -1345,6 +1426,7 @@ export const InfiniteMovieMenu = <T,>({
   loadState,
   scale = 1,
   onActiveItemChange,
+  onLoadProgress,
   onReady,
   onSelectItem,
 }: InfiniteMovieMenuProps<T>) => {
@@ -1381,10 +1463,10 @@ export const InfiniteMovieMenu = <T,>({
     if (!canvas || !items.length) return
 
     let engine: InfiniteMovieEngine<T> | null = null
-    let readyFrameId = 0
     const onResize = () => engine?.resize()
 
     try {
+      onLoadProgress?.(0)
       engine = new InfiniteMovieEngine(
         canvas,
         items,
@@ -1395,29 +1477,30 @@ export const InfiniteMovieMenu = <T,>({
           onActiveItemChange(item)
         },
         setIsMoving,
+        (percent) => {
+          onLoadProgress?.(percent)
+          if (percent >= 100) onReady?.()
+        },
       )
       engineRef.current = engine
       engine.run()
-      readyFrameId = window.requestAnimationFrame(() => {
-        onReady?.()
-      })
       window.addEventListener('resize', onResize)
       setWebglError('')
     } catch (error) {
       setWebglError(
         error instanceof Error ? error.message : 'WebGL could not initialize',
       )
+      onLoadProgress?.(100)
       onReady?.()
     }
 
     return () => {
       window.removeEventListener('resize', onResize)
-      if (readyFrameId) window.cancelAnimationFrame(readyFrameId)
       if (openTimerRef.current) window.clearTimeout(openTimerRef.current)
       engineRef.current = null
       engine?.dispose()
     }
-  }, [items, scale, onActiveItemChange, onReady])
+  }, [items, scale, onActiveItemChange, onLoadProgress, onReady])
 
   useEffect(() => {
     engineRef.current?.setDetailFocus(
@@ -1471,6 +1554,15 @@ export const InfiniteMovieMenu = <T,>({
       }, delayMs)
     },
     [onActiveItemChange, onSelectItem],
+  )
+
+  const handleFallbackActiveItemChange = useCallback(
+    (item: InfiniteMovieMenuItem<T>) => {
+      activeItemRef.current = item
+      setActiveItem(item)
+      onActiveItemChange(item)
+    },
+    [onActiveItemChange],
   )
 
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
@@ -1535,29 +1627,37 @@ export const InfiniteMovieMenu = <T,>({
       className={cn('warp-infinite-menu', isHoldPrimed && 'is-hold-primed')}
       onWheel={handleWheel}
     >
-      <canvas
-        ref={canvasRef}
-        className='warp-infinite-menu-canvas'
-        aria-label='Infinite movie poster menu'
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerCancel={() => {
-          const pointerDown = pointerDownRef.current
-          if (pointerDown)
-            engineRef.current?.cancelPointerDrag(pointerDown.pointerId)
-          if (pointerDown?.moved) suppressNextClickRef.current = true
-          clearHoldState()
-          pointerDownRef.current = null
-        }}
-        onPointerUp={finishPointerInteraction}
-        onClick={() => {
-          pointerDownRef.current = null
-          clearHoldState()
-          if (suppressNextClickRef.current) {
-            suppressNextClickRef.current = false
-          }
-        }}
-      />
+      {webglError ? (
+        <FallbackMovieMenu
+          activeId={activeItem?.id ?? activeId}
+          items={items}
+          onActiveItemChange={handleFallbackActiveItemChange}
+        />
+      ) : (
+        <canvas
+          ref={canvasRef}
+          className='warp-infinite-menu-canvas'
+          aria-label='Infinite movie poster menu'
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerCancel={() => {
+            const pointerDown = pointerDownRef.current
+            if (pointerDown)
+              engineRef.current?.cancelPointerDrag(pointerDown.pointerId)
+            if (pointerDown?.moved) suppressNextClickRef.current = true
+            clearHoldState()
+            pointerDownRef.current = null
+          }}
+          onPointerUp={finishPointerInteraction}
+          onClick={() => {
+            pointerDownRef.current = null
+            clearHoldState()
+            if (suppressNextClickRef.current) {
+              suppressNextClickRef.current = false
+            }
+          }}
+        />
+      )}
 
       <div className='warp-infinite-sheen' />
 
@@ -1576,8 +1676,6 @@ export const InfiniteMovieMenu = <T,>({
       <div className='warp-wall-loading' data-state={loadState}>
         Loading movies
       </div>
-
-      {webglError ? <div className='warp-webgl-error'>{webglError}</div> : null}
     </div>
   )
 }
