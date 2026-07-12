@@ -38,18 +38,23 @@ type Mat4 = Float32Array
 
 const SPHERE_RADIUS = 2.58
 const TARGET_FRAME_DURATION = 1000 / 60
-const ICON_TEXTURE_CELL_SIZE = 192
+const ICON_TEXTURE_CELL_SIZE = 128
 const ICON_TEXTURE_PADDING = 12
-const ICON_INSTANCE_COUNT = 1000
+const ICON_INSTANCE_COUNT = 900
 const ICON_REST_SCALE = 0.18
 const ICON_DETAIL_SCALE = 0.34
 const DETAIL_CLICK_OPEN_DELAY_MS = 0
 const DETAIL_WHEEL_OPEN_DELAY_MS = 0
-const DETAIL_FAST_EASE_MS = 150
-const DETAIL_SLOW_EASE_MS = 820
-const DETAIL_CLOSE_EASE_MS = 420
+const DETAIL_FAST_EASE_MS = 210
+const DETAIL_SLOW_EASE_MS = 900
+const DETAIL_CLOSE_EASE_MS = 460
 const CLICK_MOVE_TOLERANCE_PX = 8
 const FALLBACK_ITEM_COUNT = 128
+const INITIAL_TEXTURE_LOAD_CONCURRENCY = 24
+const BACKGROUND_TEXTURE_LOAD_CONCURRENCY = 8
+const INITIAL_VISIBLE_Z_THRESHOLD = 0.38
+const PRIMARY_IMAGE_TIMEOUT_MS = 2200
+const FALLBACK_IMAGE_TIMEOUT_MS = 1200
 
 type DetailMotion = 'fast' | 'slow' | 'close'
 
@@ -483,15 +488,25 @@ const createProgram = (
   const program = gl.createProgram()
   const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexSource)
   const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentSource)
-  if (!program || !vertexShader || !fragmentShader) return null
+  if (!program || !vertexShader || !fragmentShader) {
+    if (vertexShader) gl.deleteShader(vertexShader)
+    if (fragmentShader) gl.deleteShader(fragmentShader)
+    if (program) gl.deleteProgram(program)
+    return null
+  }
   gl.attachShader(program, vertexShader)
   gl.attachShader(program, fragmentShader)
   gl.bindAttribLocation(program, 0, 'aModelPosition')
   gl.bindAttribLocation(program, 1, 'aModelUvs')
   gl.bindAttribLocation(program, 2, 'aInstanceMatrix')
   gl.linkProgram(program)
-  if (gl.getProgramParameter(program, gl.LINK_STATUS)) return program
-  console.error(gl.getProgramInfoLog(program))
+  const linked = Boolean(gl.getProgramParameter(program, gl.LINK_STATUS))
+  if (!linked) console.error(gl.getProgramInfoLog(program))
+  gl.detachShader(program, vertexShader)
+  gl.detachShader(program, fragmentShader)
+  gl.deleteShader(vertexShader)
+  gl.deleteShader(fragmentShader)
+  if (linked) return program
   gl.deleteProgram(program)
   return null
 }
@@ -692,6 +707,7 @@ class InfiniteMovieEngine<T> {
   private time = 0
   private frames = 0
   private disposed = false
+  private contextLost = false
   private movementActive = false
   private smoothRotationVelocity = 0
   private nearestVertexIndex = 0
@@ -710,9 +726,20 @@ class InfiniteMovieEngine<T> {
   private readonly instanceMatricesArray: Float32Array
   private readonly instanceMatrices: Float32Array[]
   private readonly instanceBuffer: WebGLBuffer | null
+  private readonly geometryBuffers: WebGLBuffer[] = []
   private readonly locations: Record<string, WebGLUniformLocation | null>
   private atlasSize = 1
   private atlasCellSize = ICON_TEXTURE_CELL_SIZE
+  private lastReportedProgress = -1
+
+  private readonly handleContextLost = (event: Event) => {
+    event.preventDefault()
+    if (this.disposed || this.contextLost) return
+    this.contextLost = true
+    window.cancelAnimationFrame(this.frameId)
+    this.canvas.dataset.webglState = 'lost'
+    this.onFatalError('The poster renderer restarted after losing WebGL')
+  }
 
   constructor(
     private readonly canvas: HTMLCanvasElement,
@@ -723,6 +750,7 @@ class InfiniteMovieEngine<T> {
     ) => void,
     private readonly onMovementChange: (moving: boolean) => void,
     private readonly onLoadProgress: (percent: number) => void,
+    private readonly onFatalError: (message: string) => void,
   ) {
     const gl = canvas.getContext('webgl2', {
       alpha: true,
@@ -767,16 +795,19 @@ class InfiniteMovieEngine<T> {
     })
 
     this.instanceBuffer = gl.createBuffer()
+    if (this.instanceBuffer) this.geometryBuffers.push(this.instanceBuffer)
     this.initGeometry()
     this.initTexture()
     this.control = new ArcballControl(canvas, (deltaTime) =>
       this.onControlUpdate(deltaTime),
     )
+    canvas.dataset.webglState = 'loading'
+    canvas.addEventListener('webglcontextlost', this.handleContextLost)
     this.resize()
   }
 
   run(time = 0) {
-    if (this.disposed) return
+    if (this.disposed || this.contextLost) return
     const deltaTime = Math.min(32, time - this.time || TARGET_FRAME_DURATION)
     this.time = time
     this.frames += deltaTime / TARGET_FRAME_DURATION
@@ -800,9 +831,20 @@ class InfiniteMovieEngine<T> {
   }
 
   dispose() {
+    if (this.disposed) return
     this.disposed = true
     window.cancelAnimationFrame(this.frameId)
     this.control.dispose()
+    this.canvas.removeEventListener('webglcontextlost', this.handleContextLost)
+    if (!this.gl.isContextLost()) {
+      if (this.texture) this.gl.deleteTexture(this.texture)
+      this.geometryBuffers.forEach((buffer) => this.gl.deleteBuffer(buffer))
+      if (this.vao) this.gl.deleteVertexArray(this.vao)
+      this.gl.deleteProgram(this.program)
+    }
+    this.texture = null
+    this.vao = null
+    this.canvas.dataset.webglState = 'disposed'
   }
 
   beginPointerDrag(clientX: number, clientY: number, pointerId?: number) {
@@ -907,16 +949,19 @@ class InfiniteMovieEngine<T> {
       this.iconBuffers.vertices,
       gl.STATIC_DRAW,
     )
+    if (vertexBuffer) this.geometryBuffers.push(vertexBuffer)
     gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer)
     gl.enableVertexAttribArray(0)
     gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 0, 0)
 
     const uvBuffer = createBuffer(gl, this.iconBuffers.uvs, gl.STATIC_DRAW)
+    if (uvBuffer) this.geometryBuffers.push(uvBuffer)
     gl.bindBuffer(gl.ARRAY_BUFFER, uvBuffer)
     gl.enableVertexAttribArray(1)
     gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0)
 
     const indexBuffer = gl.createBuffer()
+    if (indexBuffer) this.geometryBuffers.push(indexBuffer)
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer)
     gl.bufferData(
       gl.ELEMENT_ARRAY_BUFFER,
@@ -962,7 +1007,6 @@ class InfiniteMovieEngine<T> {
     )
 
     const itemCount = Math.max(1, this.items.length)
-    let loadedItemCount = 0
     this.atlasSize = Math.ceil(Math.sqrt(itemCount))
     const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number
     this.atlasCellSize = Math.max(
@@ -988,30 +1032,7 @@ class InfiniteMovieEngine<T> {
     context.imageSmoothingEnabled = true
     context.imageSmoothingQuality = 'high'
 
-    const uploadAtlas = () => {
-      if (this.disposed || !this.texture) return
-      gl.bindTexture(gl.TEXTURE_2D, this.texture)
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas)
-    }
-    const reportProgress = (percent: number) => {
-      const nextPercent = Math.max(0, Math.min(100, Math.round(percent)))
-      this.canvas.dataset.textureProgress = String(nextPercent)
-      this.onLoadProgress(nextPercent)
-    }
-
-    let uploadQueued = false
-    const scheduleAtlasUpload = () => {
-      if (uploadQueued) return
-      uploadQueued = true
-      window.requestAnimationFrame(() => {
-        uploadQueued = false
-        if (this.disposed || !this.texture) return
-        uploadAtlas()
-      })
-    }
-
-    uploadAtlas()
-    reportProgress(3)
+    this.reportProgress(3)
     this.items.forEach((item, index) => {
       const x = (index % this.atlasSize) * this.atlasCellSize
       const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
@@ -1025,38 +1046,158 @@ class InfiniteMovieEngine<T> {
         index,
       )
     })
-    uploadAtlas()
-    reportProgress(8)
-    this.items.forEach((item, index) => {
-      void this.loadImage(item.image, item.fallbackImage).then((image) => {
-        if (this.disposed || !this.texture) return
-        const x = (index % this.atlasSize) * this.atlasCellSize
-        const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
-        if (image.naturalWidth && image.naturalHeight) {
-          this.drawImageCover(
-            context,
-            image,
-            x,
-            y,
-            this.atlasCellSize,
-            this.atlasCellSize,
-          )
-        } else {
-          this.drawPosterPlaceholder(
-            context,
-            item,
-            x,
-            y,
-            this.atlasCellSize,
-            this.atlasCellSize,
-            index,
-          )
-        }
-        loadedItemCount += 1
-        reportProgress(8 + (loadedItemCount / itemCount) * 92)
-        scheduleAtlasUpload()
-      })
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas)
+    this.reportProgress(8)
+
+    const uploadCanvas = document.createElement('canvas')
+    uploadCanvas.width = this.atlasCellSize
+    uploadCanvas.height = this.atlasCellSize
+    const uploadContext = uploadCanvas.getContext('2d')
+    if (!uploadContext) {
+      this.reportProgress(100)
+      return
+    }
+
+    void this.loadTextureImages(uploadCanvas, uploadContext)
+  }
+
+  private async loadTextureImages(
+    uploadCanvas: HTMLCanvasElement,
+    uploadContext: CanvasRenderingContext2D,
+  ) {
+    const initialIndices = this.getInitialVisibleItemIndices()
+    const initialSet = new Set(initialIndices)
+    let completedInitial = 0
+
+    await this.loadPosterIndices(
+      initialIndices,
+      INITIAL_TEXTURE_LOAD_CONCURRENCY,
+      (index, image) => {
+        this.uploadPosterCell(index, image, uploadCanvas, uploadContext)
+        completedInitial += 1
+        this.reportProgress(
+          8 + (completedInitial / Math.max(1, initialIndices.length)) * 91,
+        )
+      },
+    )
+
+    if (this.disposed || this.contextLost) return
+    await new Promise<void>((resolve) =>
+      window.requestAnimationFrame(() => resolve()),
+    )
+    if (this.disposed || this.contextLost) return
+    this.canvas.dataset.webglState = 'ready'
+    this.reportProgress(100)
+
+    const backgroundIndices = this.items
+      .map((_, index) => index)
+      .filter((index) => !initialSet.has(index))
+    window.setTimeout(() => {
+      if (this.disposed || this.contextLost) return
+      void this.loadPosterIndices(
+        backgroundIndices,
+        BACKGROUND_TEXTURE_LOAD_CONCURRENCY,
+        (index, image) =>
+          this.uploadPosterCell(index, image, uploadCanvas, uploadContext),
+      )
+    }, 500)
+  }
+
+  private getInitialVisibleItemIndices() {
+    const itemCount = Math.max(1, this.items.length)
+    const bestDepthByIndex = new Map<number, number>()
+    this.instancePositions.forEach((position, instanceIndex) => {
+      if (position[2] > -SPHERE_RADIUS * INITIAL_VISIBLE_Z_THRESHOLD) return
+      const itemIndex = instanceIndex % itemCount
+      bestDepthByIndex.set(
+        itemIndex,
+        Math.min(bestDepthByIndex.get(itemIndex) ?? SPHERE_RADIUS, position[2]),
+      )
     })
+
+    if (!bestDepthByIndex.size) return [0]
+    return [...bestDepthByIndex.entries()]
+      .sort((a, b) => a[1] - b[1])
+      .map(([index]) => index)
+  }
+
+  private async loadPosterIndices(
+    indices: number[],
+    concurrency: number,
+    onLoaded: (index: number, image: HTMLImageElement) => void,
+  ) {
+    let cursor = 0
+    const worker = async () => {
+      while (!this.disposed && !this.contextLost) {
+        const index = indices[cursor]
+        cursor += 1
+        if (index === undefined) return
+        const item = this.items[index]
+        if (!item) continue
+        const image = await this.loadImage(item.image, item.fallbackImage)
+        if (this.disposed || this.contextLost || !this.texture) return
+        onLoaded(index, image)
+      }
+    }
+
+    await Promise.all(
+      Array.from(
+        { length: Math.min(concurrency, Math.max(1, indices.length)) },
+        () => worker(),
+      ),
+    )
+  }
+
+  private uploadPosterCell(
+    index: number,
+    image: HTMLImageElement,
+    uploadCanvas: HTMLCanvasElement,
+    uploadContext: CanvasRenderingContext2D,
+  ) {
+    const item = this.items[index]
+    if (!item || !this.texture) return
+    uploadContext.clearRect(0, 0, this.atlasCellSize, this.atlasCellSize)
+    if (image.naturalWidth && image.naturalHeight) {
+      this.drawImageCover(
+        uploadContext,
+        image,
+        0,
+        0,
+        this.atlasCellSize,
+        this.atlasCellSize,
+      )
+    } else {
+      this.drawPosterPlaceholder(
+        uploadContext,
+        item,
+        0,
+        0,
+        this.atlasCellSize,
+        this.atlasCellSize,
+        index,
+      )
+    }
+
+    const x = (index % this.atlasSize) * this.atlasCellSize
+    const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.texture)
+    this.gl.texSubImage2D(
+      this.gl.TEXTURE_2D,
+      0,
+      x,
+      y,
+      this.gl.RGBA,
+      this.gl.UNSIGNED_BYTE,
+      uploadCanvas,
+    )
+  }
+
+  private reportProgress(percent: number) {
+    const nextPercent = Math.max(0, Math.min(100, Math.round(percent)))
+    if (nextPercent === this.lastReportedProgress) return
+    this.lastReportedProgress = nextPercent
+    this.canvas.dataset.textureProgress = String(nextPercent)
+    this.onLoadProgress(nextPercent)
   }
 
   private loadImage(src: string, fallbackSrc?: string) {
@@ -1076,7 +1217,7 @@ class InfiniteMovieEngine<T> {
           triedFallback = true
           window.clearTimeout(timeoutId)
           image.src = fallbackSrc
-          timeoutId = window.setTimeout(finish, 4500)
+          timeoutId = window.setTimeout(finish, FALLBACK_IMAGE_TIMEOUT_MS)
           return
         }
         finish()
@@ -1084,7 +1225,10 @@ class InfiniteMovieEngine<T> {
       image.crossOrigin = 'anonymous'
       image.onload = finish
       image.onerror = tryFallbackOrFinish
-      timeoutId = window.setTimeout(tryFallbackOrFinish, 6500)
+      timeoutId = window.setTimeout(
+        tryFallbackOrFinish,
+        PRIMARY_IMAGE_TIMEOUT_MS,
+      )
       image.src = src
     })
   }
@@ -1480,6 +1624,11 @@ export const InfiniteMovieMenu = <T,>({
         (percent) => {
           onLoadProgress?.(percent)
           if (percent >= 100) onReady?.()
+        },
+        (message) => {
+          setWebglError(message)
+          onLoadProgress?.(100)
+          onReady?.()
         },
       )
       engineRef.current = engine

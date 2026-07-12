@@ -8,6 +8,7 @@ import {
   getGenreOverlap,
   groupMoviesAlphabetically,
   groupMoviesByYear,
+  resolveMoviePosterUrls,
   sortMoviesForList,
 } from './test-gallery'
 
@@ -99,6 +100,29 @@ describe('test gallery filtering helpers', () => {
       )[0],
     ).toBe('Only Lovers Left Alive')
     expect(getGenreOverlap(movies[2], ['Horror', 'Romance'])).toBe(2)
+  })
+
+  it('keeps higher-ranked movies first when genre overlap is equal', () => {
+    expect(getGalleryWindow(movies, [], 3).map((item) => item.rank)).toEqual([
+      1, 2, 3,
+    ])
+  })
+
+  it('uses local posters first and remote posters beyond the local batch', () => {
+    const fallback = 'data:image/svg+xml,fallback'
+
+    expect(resolveMoviePosterUrls(0, '/poster.jpg', fallback)).toEqual({
+      fallbackPosterUrl: fallback,
+      posterUrl: '/media/single/0.jpg',
+    })
+    expect(resolveMoviePosterUrls(216, '/poster.jpg', fallback)).toEqual({
+      fallbackPosterUrl: fallback,
+      posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+    })
+    expect(resolveMoviePosterUrls(216, '', fallback)).toEqual({
+      fallbackPosterUrl: fallback,
+      posterUrl: fallback,
+    })
   })
 
   it('sorts list mode chronologically or alphabetically', () => {

@@ -34,7 +34,7 @@ export const getStorageItem = <K extends StorageKey>(
     // Handle different value types
     switch (key) {
       case STORAGE_KEYS.PLAYED_INTRO:
-        return Boolean(value) as StorageSchema[K]
+        return (value === 'true') as StorageSchema[K]
 
       case STORAGE_KEYS.CELL_LIMIT:
       case STORAGE_KEYS.DEVICE_CLASS:

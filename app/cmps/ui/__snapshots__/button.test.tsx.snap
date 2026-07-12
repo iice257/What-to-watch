@@ -2,7 +2,7 @@
 
 exports[`Button > sizes > should match snapshot for default size > button-size-default 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/88 h-10 px-4 py-2"
 >
   default
    Button
@@ -11,7 +11,7 @@ exports[`Button > sizes > should match snapshot for default size > button-size-d
 
 exports[`Button > sizes > should match snapshot for icon size > button-size-icon 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 w-9"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/88 h-9 w-9"
 >
   icon
    Button
@@ -20,7 +20,7 @@ exports[`Button > sizes > should match snapshot for icon size > button-size-icon
 
 exports[`Button > sizes > should match snapshot for lg size > button-size-lg 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-10 rounded-md px-8"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/88 h-11 rounded-md px-6"
 >
   lg
    Button
@@ -29,7 +29,7 @@ exports[`Button > sizes > should match snapshot for lg size > button-size-lg 1`]
 
 exports[`Button > sizes > should match snapshot for sm size > button-size-sm 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-8 rounded-md px-3 text-xs"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap font-semibold transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/88 h-8 rounded-md px-3 text-xs"
 >
   sm
    Button
@@ -38,7 +38,7 @@ exports[`Button > sizes > should match snapshot for sm size > button-size-sm 1`]
 
 exports[`Button > variants > should match snapshot for default variant > button-variant-default 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-primary bg-primary text-primary-foreground shadow-sm hover:bg-primary/88 h-10 px-4 py-2"
 >
   default
    Button
@@ -47,7 +47,7 @@ exports[`Button > variants > should match snapshot for default variant > button-
 
 exports[`Button > variants > should match snapshot for destructive variant > button-variant-destructive 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-9 px-4 py-2"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90 h-10 px-4 py-2"
 >
   destructive
    Button
@@ -56,7 +56,7 @@ exports[`Button > variants > should match snapshot for destructive variant > but
 
 exports[`Button > variants > should match snapshot for ghost variant > button-variant-ghost 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-foreground/76 hover:bg-white/10 light:hover:bg-black/7 hover:text-foreground h-10 px-4 py-2"
 >
   ghost
    Button
@@ -65,7 +65,7 @@ exports[`Button > variants > should match snapshot for ghost variant > button-va
 
 exports[`Button > variants > should match snapshot for link variant > button-variant-link 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary underline-offset-4 hover:underline h-9 px-4 py-2"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 text-primary underline-offset-4 hover:underline h-10 px-4 py-2"
 >
   link
    Button
@@ -74,7 +74,7 @@ exports[`Button > variants > should match snapshot for link variant > button-var
 
 exports[`Button > variants > should match snapshot for outline variant > button-variant-outline 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-input shadow-sm hover:bg-foreground/10 hover:text-accent-foreground h-9 px-4 py-2"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 border border-white/16 light:border-black/15 bg-black/18 light:bg-white/35 text-foreground shadow-sm backdrop-blur-md hover:border-white/28 hover:bg-white/10 light:hover:bg-black/5 h-10 px-4 py-2"
 >
   outline
    Button
@@ -83,7 +83,7 @@ exports[`Button > variants > should match snapshot for outline variant > button-
 
 exports[`Button > variants > should match snapshot for secondary variant > button-variant-secondary 1`] = `
 <button
-  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium text-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 h-9 px-4 py-2"
+  class="pointer-events-auto inline-flex cursor-pointer items-center justify-center gap-2 whitespace-nowrap rounded-md font-semibold text-sm transition-[background-color,border-color,color,transform] duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/70 active:translate-y-px disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0 bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80 h-10 px-4 py-2"
 >
   secondary
    Button

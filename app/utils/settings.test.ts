@@ -62,7 +62,7 @@ describe('Settings Utils', () => {
         version: 1,
         theme: THEME.light,
         playedIntro: true,
-        preset: VOROFORCE_PRESET.minimal,
+        preset: VOROFORCE_PRESET.chaos,
         cellLimit: CELL_LIMIT.xs,
         deviceClass: undefined,
         userConfig: { legacy: true },
@@ -74,6 +74,21 @@ describe('Settings Utils', () => {
 
       // Should have saved consolidated settings
       expect(localStorage.getItem('settings')).toBeTruthy()
+    })
+
+    it('preserves valid saved performance preferences', () => {
+      const testSettings: PersistentSettings = {
+        version: 1,
+        theme: THEME.dark,
+        playedIntro: false,
+        preset: VOROFORCE_PRESET.chaos,
+        cellLimit: CELL_LIMIT.md,
+        userConfig: {},
+      }
+
+      localStorage.setItem('settings', JSON.stringify(testSettings))
+
+      expect(getPersistentSettings()).toMatchObject(testSettings)
     })
   })
 

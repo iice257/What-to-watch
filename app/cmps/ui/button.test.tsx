@@ -17,7 +17,7 @@ describe('Button', () => {
 
     const button = screen.getByRole('button')
     expect(button).toHaveClass('border')
-    expect(button).toHaveClass('border-input')
+    expect(button).toHaveClass('border-white/16')
   })
 
   it('should apply size classes', () => {
@@ -109,7 +109,7 @@ describe('Button', () => {
         variant: 'outline',
         size: 'sm',
       })
-      expect(outlineSmallClasses).toContain('border-input')
+      expect(outlineSmallClasses).toContain('border-white/16')
       expect(outlineSmallClasses).toContain('px-3')
     })
   })

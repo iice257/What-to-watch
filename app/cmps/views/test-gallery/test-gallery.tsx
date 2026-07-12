@@ -72,9 +72,9 @@ type PosterLoadState = 'loading' | 'loaded' | 'fallback'
 type MotionPhase = 'enter' | 'exit'
 
 const DATASET_FILE_COUNT = 5
-const INDEX_CATALOG_COUNT = 57294
 const LIST_WINDOW_SIZE = 10000
-const GALLERY_WINDOW_SIZE = 1000
+const GALLERY_WINDOW_SIZE = 900
+const LOCAL_POSTER_COUNT = 216
 const MIN_DECISION_FILTER_RESULTS = 24
 const DETAILS_EXPAND_DRAG_PX = 42
 const DETAILS_CLOSE_DRAG_PX = 68
@@ -467,7 +467,7 @@ export const getGalleryWindow = (
     }))
     .sort(
       (a, b) =>
-        b.overlap - a.overlap || b.movie.rank - a.movie.rank || a.sort - b.sort,
+        b.overlap - a.overlap || a.movie.rank - b.movie.rank || a.sort - b.sort,
     )
     .slice(0, limit)
     .map(({ movie }) => movie)
@@ -531,6 +531,20 @@ const getGenreSummaries = (movies: TestMovie[]): GenreSummary[] => {
     .sort((a, b) => b.count - a.count || a.genre.localeCompare(b.genre))
 }
 
+export const resolveMoviePosterUrls = (
+  index: number,
+  posterPath: string,
+  generatedFallbackUrl: string,
+) => ({
+  fallbackPosterUrl: generatedFallbackUrl,
+  posterUrl:
+    index < LOCAL_POSTER_COUNT
+      ? `/media/single/${index}.jpg`
+      : posterPath
+        ? `${TMDB_POSTER_BASE_URL}${posterPath}`
+        : generatedFallbackUrl,
+})
+
 const mapMovie = (raw: RawMovie, index: number): TestMovie => {
   const rating = getPositiveNumber(raw, 'vote_average')
   const runtimeMinutes = getPositiveNumber(raw, 'runtime_minutes')
@@ -538,7 +552,11 @@ const mapMovie = (raw: RawMovie, index: number): TestMovie => {
   const rawId = getText(raw, 'id')
   const posterPath = getText(raw, 'poster_path')
   const title = getText(raw, 'title') || `Untitled ${index + 1}`
-  const fallbackPosterUrl = getFallbackPosterUrl(index + 1, title, year)
+  const posterUrls = resolveMoviePosterUrls(
+    index,
+    posterPath,
+    getFallbackPosterUrl(index + 1, title, year),
+  )
 
   return {
     id: rawId ? `${index}-${rawId}` : String(index),
@@ -553,10 +571,7 @@ const mapMovie = (raw: RawMovie, index: number): TestMovie => {
     rating: rating ? rating.toFixed(1) : '',
     ratingValue: rating,
     countries: splitList(getText(raw, 'production_countries'), 1).join(', '),
-    posterUrl: posterPath
-      ? `${TMDB_POSTER_BASE_URL}${posterPath}`
-      : fallbackPosterUrl,
-    fallbackPosterUrl,
+    ...posterUrls,
   }
 }
 
@@ -611,12 +626,8 @@ export const TestGalleryApp = () => {
   const [filterOpen, setFilterOpen] = useState(false)
   const [aboutOpen, setAboutOpen] = useState(false)
   const [aboutMaximized, setAboutMaximized] = useState(false)
-  const [initialGalleryReady, setInitialGalleryReady] = useState(
-    Boolean(cachedMovieDataset?.length),
-  )
-  const [galleryLoadPercent, setGalleryLoadPercent] = useState(
-    cachedMovieDataset?.length ? 100 : 0,
-  )
+  const [initialGalleryReady, setInitialGalleryReady] = useState(false)
+  const [galleryLoadPercent, setGalleryLoadPercent] = useState(0)
   const [loadState, setLoadState] = useState<LoadState>(
     cachedMovieDataset ? 'ready' : 'loading',
   )
@@ -701,9 +712,7 @@ export const TestGalleryApp = () => {
   }, [loadState, visibleMovies.length])
 
   const handleGalleryLoadProgress = useCallback((percent: number) => {
-    setGalleryLoadPercent((currentPercent) =>
-      Math.max(currentPercent, Math.round(percent)),
-    )
+    setGalleryLoadPercent(Math.round(percent))
     if (percent >= 100) setInitialGalleryReady(true)
   }, [])
 
@@ -844,12 +853,6 @@ export const TestGalleryApp = () => {
       data-filter-open={filterPresence.isPresent ? 'true' : 'false'}
       data-gallery-ready={initialGalleryReady ? 'true' : 'false'}
       data-mode={mode}
-      onMouseMove={(event) => {
-        const x = event.clientX / Math.max(window.innerWidth, 1) - 0.5
-        const y = event.clientY / Math.max(window.innerHeight, 1) - 0.5
-        document.documentElement.style.setProperty('--warp-pointer-x', `${x}`)
-        document.documentElement.style.setProperty('--warp-pointer-y', `${y}`)
-      }}
     >
       {mode === 'wall' ? (
         <WarpWall
@@ -873,7 +876,7 @@ export const TestGalleryApp = () => {
           movies={listMovies}
           searchQuery={listSearchQuery}
           searchResultCount={searchableListMovies.length}
-          totalMovieCount={INDEX_CATALOG_COUNT}
+          totalMovieCount={movies.length}
           onGroupingChange={setListGrouping}
           onOpenMovie={handleOpenMovie}
           onPickRandomMovie={handlePickRandomMovie}
@@ -897,7 +900,7 @@ export const TestGalleryApp = () => {
         aboutOpen={aboutOpen}
         activeMovie={activeMovie}
         mode={mode}
-        movieCount={INDEX_CATALOG_COUNT}
+        movieCount={movies.length}
         selectedFilterCount={selectedFilterCount}
         timeLabel={timeLabel}
         onOpenAbout={() => {
@@ -932,8 +935,13 @@ export const TestGalleryApp = () => {
         }}
       />
 
-      {mode === 'wall' && !initialGalleryReady ? (
-        <output className='warp-gallery-preloader' aria-live='polite'>
+      {mode === 'wall' ? (
+        <output
+          className='warp-gallery-preloader'
+          data-state={initialGalleryReady ? 'ready' : 'loading'}
+          aria-hidden={initialGalleryReady ? 'true' : undefined}
+          aria-live='polite'
+        >
           <span>
             <strong>Building gallery</strong>
             <i>
@@ -1070,7 +1078,7 @@ const WarpWall = ({
       movies.map((movie) => ({
         id: movie.id,
         fallbackImage: movie.fallbackPosterUrl,
-        image: movie.fallbackPosterUrl,
+        image: movie.posterUrl,
         title: movie.title,
         description:
           movie.genres.slice(0, 2).join(' | ') || movie.overview || 'Movie',

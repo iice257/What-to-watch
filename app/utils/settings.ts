@@ -172,8 +172,6 @@ const normalizeSettings = (
   const normalized = {
     ...getDefaultSettings(),
     ...settings,
-    preset: DEFAULT_VOROFORCE_PRESET,
-    cellLimit: CELL_LIMIT.xs,
     userConfig: settings.userConfig ?? {},
   }
 
