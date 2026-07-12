@@ -8,6 +8,10 @@ import {
   useState,
 } from 'react'
 import { cn } from '../../../utils/tw'
+import {
+  type HoneycombVec3 as Vec3,
+  createHoneycombSpherePositions,
+} from './honeycomb-layout'
 
 export type InfiniteMovieMenuItem<T> = {
   id: string
@@ -32,7 +36,6 @@ type InfiniteMovieMenuProps<T> = {
 }
 
 type Vec2 = [number, number]
-type Vec3 = [number, number, number]
 type Quat = [number, number, number, number]
 type Mat4 = Float32Array
 
@@ -40,7 +43,7 @@ const SPHERE_RADIUS = 2.58
 const TARGET_FRAME_DURATION = 1000 / 60
 const ICON_TEXTURE_CELL_SIZE = 128
 const ICON_TEXTURE_PADDING = 12
-const ICON_INSTANCE_COUNT = 900
+const ICON_INSTANCE_COUNT = 750
 const ICON_REST_SCALE = 0.18
 const ICON_DETAIL_SCALE = 0.34
 const DETAIL_CLICK_OPEN_DELAY_MS = 0
@@ -51,10 +54,7 @@ const DETAIL_CLOSE_EASE_MS = 460
 const CLICK_MOVE_TOLERANCE_PX = 8
 const FALLBACK_ITEM_COUNT = 128
 const INITIAL_TEXTURE_LOAD_CONCURRENCY = 24
-const BACKGROUND_TEXTURE_LOAD_CONCURRENCY = 8
-const INITIAL_VISIBLE_Z_THRESHOLD = 0.38
-const PRIMARY_IMAGE_TIMEOUT_MS = 2200
-const FALLBACK_IMAGE_TIMEOUT_MS = 1200
+const PRIMARY_IMAGE_TIMEOUT_MS = 20000
 
 type DetailMotion = 'fast' | 'slow' | 'close'
 
@@ -420,24 +420,6 @@ const transformQuat3 = ([x, y, z]: Vec3, q: Quat): Vec3 => {
   ]
 }
 
-const createFibonacciSpherePositions = (count = ICON_INSTANCE_COUNT) => {
-  const positions: Vec3[] = []
-  const goldenAngle = Math.PI * (3 - Math.sqrt(5))
-
-  for (let index = 0; index < count; index += 1) {
-    const y = 1 - (index / Math.max(1, count - 1)) * 2
-    const ringRadius = Math.sqrt(Math.max(0, 1 - y * y))
-    const theta = index * goldenAngle
-    positions.push([
-      SPHERE_RADIUS * Math.cos(theta) * ringRadius,
-      SPHERE_RADIUS * y,
-      SPHERE_RADIUS * Math.sin(theta) * ringRadius,
-    ])
-  }
-
-  return positions
-}
-
 const createDiscGeometry = () => {
   const halfWidth = 0.34
   const halfHeight = 0.5
@@ -780,7 +762,10 @@ class InfiniteMovieEngine<T> {
       uAtlasPadding: gl.getUniformLocation(program, 'uAtlasPadding'),
     }
 
-    this.instancePositions = createFibonacciSpherePositions()
+    this.instancePositions = createHoneycombSpherePositions(
+      Math.min(ICON_INSTANCE_COUNT, this.items.length),
+      SPHERE_RADIUS,
+    )
     this.instanceMatricesArray = new Float32Array(
       this.instancePositions.length * 16,
     )
@@ -801,6 +786,7 @@ class InfiniteMovieEngine<T> {
     this.control = new ArcballControl(canvas, (deltaTime) =>
       this.onControlUpdate(deltaTime),
     )
+    canvas.dataset.itemCount = String(this.items.length)
     canvas.dataset.webglState = 'loading'
     canvas.addEventListener('webglcontextlost', this.handleContextLost)
     this.resize()
@@ -1033,19 +1019,6 @@ class InfiniteMovieEngine<T> {
     context.imageSmoothingQuality = 'high'
 
     this.reportProgress(3)
-    this.items.forEach((item, index) => {
-      const x = (index % this.atlasSize) * this.atlasCellSize
-      const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
-      this.drawPosterPlaceholder(
-        context,
-        item,
-        x,
-        y,
-        this.atlasCellSize,
-        this.atlasCellSize,
-        index,
-      )
-    })
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, atlas)
     this.reportProgress(8)
 
@@ -1058,26 +1031,28 @@ class InfiniteMovieEngine<T> {
       return
     }
 
-    void this.loadTextureImages(uploadCanvas, uploadContext)
+    void this.loadTextureImages(uploadCanvas, uploadContext).catch((error) => {
+      if (this.disposed || this.contextLost) return
+      this.onFatalError(
+        error instanceof Error ? error.message : 'Poster loading failed',
+      )
+    })
   }
 
   private async loadTextureImages(
     uploadCanvas: HTMLCanvasElement,
     uploadContext: CanvasRenderingContext2D,
   ) {
-    const initialIndices = this.getInitialVisibleItemIndices()
-    const initialSet = new Set(initialIndices)
-    let completedInitial = 0
+    const indices = this.items.map((_, index) => index)
+    let completed = 0
 
     await this.loadPosterIndices(
-      initialIndices,
+      indices,
       INITIAL_TEXTURE_LOAD_CONCURRENCY,
       (index, image) => {
         this.uploadPosterCell(index, image, uploadCanvas, uploadContext)
-        completedInitial += 1
-        this.reportProgress(
-          8 + (completedInitial / Math.max(1, initialIndices.length)) * 91,
-        )
+        completed += 1
+        this.reportProgress(8 + (completed / Math.max(1, indices.length)) * 91)
       },
     )
 
@@ -1088,37 +1063,6 @@ class InfiniteMovieEngine<T> {
     if (this.disposed || this.contextLost) return
     this.canvas.dataset.webglState = 'ready'
     this.reportProgress(100)
-
-    const backgroundIndices = this.items
-      .map((_, index) => index)
-      .filter((index) => !initialSet.has(index))
-    window.setTimeout(() => {
-      if (this.disposed || this.contextLost) return
-      void this.loadPosterIndices(
-        backgroundIndices,
-        BACKGROUND_TEXTURE_LOAD_CONCURRENCY,
-        (index, image) =>
-          this.uploadPosterCell(index, image, uploadCanvas, uploadContext),
-      )
-    }, 500)
-  }
-
-  private getInitialVisibleItemIndices() {
-    const itemCount = Math.max(1, this.items.length)
-    const bestDepthByIndex = new Map<number, number>()
-    this.instancePositions.forEach((position, instanceIndex) => {
-      if (position[2] > -SPHERE_RADIUS * INITIAL_VISIBLE_Z_THRESHOLD) return
-      const itemIndex = instanceIndex % itemCount
-      bestDepthByIndex.set(
-        itemIndex,
-        Math.min(bestDepthByIndex.get(itemIndex) ?? SPHERE_RADIUS, position[2]),
-      )
-    })
-
-    if (!bestDepthByIndex.size) return [0]
-    return [...bestDepthByIndex.entries()]
-      .sort((a, b) => a[1] - b[1])
-      .map(([index]) => index)
   }
 
   private async loadPosterIndices(
@@ -1157,26 +1101,14 @@ class InfiniteMovieEngine<T> {
     const item = this.items[index]
     if (!item || !this.texture) return
     uploadContext.clearRect(0, 0, this.atlasCellSize, this.atlasCellSize)
-    if (image.naturalWidth && image.naturalHeight) {
-      this.drawImageCover(
-        uploadContext,
-        image,
-        0,
-        0,
-        this.atlasCellSize,
-        this.atlasCellSize,
-      )
-    } else {
-      this.drawPosterPlaceholder(
-        uploadContext,
-        item,
-        0,
-        0,
-        this.atlasCellSize,
-        this.atlasCellSize,
-        index,
-      )
-    }
+    this.drawImageCover(
+      uploadContext,
+      image,
+      0,
+      0,
+      this.atlasCellSize,
+      this.atlasCellSize,
+    )
 
     const x = (index % this.atlasSize) * this.atlasCellSize
     const y = Math.floor(index / this.atlasSize) * this.atlasCellSize
@@ -1201,7 +1133,7 @@ class InfiniteMovieEngine<T> {
   }
 
   private loadImage(src: string, fallbackSrc?: string) {
-    return new Promise<HTMLImageElement>((resolve) => {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
       const image = new Image()
       let triedFallback = false
       let timeoutId = 0
@@ -1212,23 +1144,24 @@ class InfiniteMovieEngine<T> {
         window.clearTimeout(timeoutId)
         resolve(image)
       }
-      const tryFallbackOrFinish = () => {
+      const tryFallbackOrFail = () => {
         if (fallbackSrc && fallbackSrc !== image.src && !triedFallback) {
           triedFallback = true
           window.clearTimeout(timeoutId)
           image.src = fallbackSrc
-          timeoutId = window.setTimeout(finish, FALLBACK_IMAGE_TIMEOUT_MS)
+          timeoutId = window.setTimeout(
+            () => reject(new Error(`Poster timed out: ${src}`)),
+            PRIMARY_IMAGE_TIMEOUT_MS,
+          )
           return
         }
-        finish()
+        window.clearTimeout(timeoutId)
+        reject(new Error(`Poster could not load: ${src}`))
       }
       image.crossOrigin = 'anonymous'
       image.onload = finish
-      image.onerror = tryFallbackOrFinish
-      timeoutId = window.setTimeout(
-        tryFallbackOrFinish,
-        PRIMARY_IMAGE_TIMEOUT_MS,
-      )
+      image.onerror = tryFallbackOrFail
+      timeoutId = window.setTimeout(tryFallbackOrFail, PRIMARY_IMAGE_TIMEOUT_MS)
       image.src = src
     })
   }
@@ -1257,67 +1190,6 @@ class InfiniteMovieEngine<T> {
       y,
       width,
       height,
-    )
-  }
-
-  private drawPosterPlaceholder(
-    context: CanvasRenderingContext2D,
-    item: InfiniteMovieMenuItem<T>,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    index: number,
-  ) {
-    const hue = Math.round(((index * 47) % 360) + 12)
-    const gradient = context.createLinearGradient(x, y, x + width, y + height)
-    gradient.addColorStop(0, `hsl(${hue} 32% 24%)`)
-    gradient.addColorStop(0.55, '#101010')
-    gradient.addColorStop(1, `hsl(${(hue + 48) % 360} 34% 17%)`)
-    context.fillStyle = gradient
-    context.fillRect(x, y, width, height)
-
-    context.fillStyle = 'rgba(255,255,255,0.12)'
-    context.beginPath()
-    context.arc(
-      x + width * 0.72,
-      y + height * 0.22,
-      width * 0.24,
-      0,
-      Math.PI * 2,
-    )
-    context.fill()
-
-    context.fillStyle = 'rgba(0,0,0,0.18)'
-    context.fillRect(
-      x + width * 0.1,
-      y + height * 0.1,
-      width * 0.8,
-      height * 0.8,
-    )
-
-    const words = item.title.split(/\s+/).filter(Boolean).slice(0, 4)
-    const titleLines = words.length ? words : ['Movie']
-    context.fillStyle = 'rgba(255,255,255,0.88)'
-    context.font = `900 ${Math.max(13, Math.round(width * 0.088))}px Arial, sans-serif`
-    context.textBaseline = 'bottom'
-    context.textAlign = 'left'
-    titleLines.slice(0, 3).forEach((word, lineIndex, lines) => {
-      context.fillText(
-        word.slice(0, 12),
-        x + width * 0.14,
-        y + height * (0.78 - (lines.length - lineIndex - 1) * 0.12),
-        width * 0.72,
-      )
-    })
-
-    context.fillStyle = 'rgba(255,255,255,0.46)'
-    context.font = `800 ${Math.max(9, Math.round(width * 0.052))}px Arial, sans-serif`
-    context.fillText(
-      item.meta.split('|')[0]?.replace('Year: ', '').trim() || item.description,
-      x + width * 0.14,
-      y + height * 0.9,
-      width * 0.72,
     )
   }
 

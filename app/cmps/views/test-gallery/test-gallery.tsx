@@ -26,6 +26,10 @@ import {
 
 type RawMovie = Record<string, unknown>
 
+type PosterAvailability = {
+  ids?: unknown[]
+}
+
 type TestMovie = {
   id: string
   rank: number
@@ -40,7 +44,6 @@ type TestMovie = {
   ratingValue: number | null
   countries: string
   posterUrl: string
-  fallbackPosterUrl: string
 }
 
 type ViewMode = 'wall' | 'list' | 'genres'
@@ -68,19 +71,18 @@ type DecisionFilterResult = {
   movies: TestMovie[]
   strictCount: number
 }
-type PosterLoadState = 'loading' | 'loaded' | 'fallback'
+type PosterLoadState = 'loading' | 'loaded' | 'error'
 type MotionPhase = 'enter' | 'exit'
 
 const DATASET_FILE_COUNT = 5
 const LIST_WINDOW_SIZE = 10000
-const GALLERY_WINDOW_SIZE = 900
-const LOCAL_POSTER_COUNT = 216
+const GALLERY_WINDOW_SIZE = 750
+const LEGACY_LOCAL_POSTER_COUNT = 216
 const MIN_DECISION_FILTER_RESULTS = 24
 const DETAILS_EXPAND_DRAG_PX = 42
 const DETAILS_CLOSE_DRAG_PX = 68
 const DETAILS_COMPACT_DRAG_PX = 38
 const EXIT_ANIMATION_MS = 220
-const TMDB_POSTER_BASE_URL = 'https://image.tmdb.org/t/p/w342'
 const CONTENT_FILTERS: Array<{
   disabled?: boolean
   id: ContentFilter
@@ -231,32 +233,6 @@ const getYearNumber = (movie: TestMovie) => {
   return Number.isFinite(year) ? year : 0
 }
 
-const escapeSvgText = (value: string) =>
-  value.replace(/[&<>"']/g, (character) => {
-    switch (character) {
-      case '&':
-        return '&amp;'
-      case '<':
-        return '&lt;'
-      case '>':
-        return '&gt;'
-      case '"':
-        return '&quot;'
-      default:
-        return '&apos;'
-    }
-  })
-
-const getFallbackPosterUrl = (rank: number, title: string, year: string) => {
-  const hue = Math.round(seededRandom(rank) * 360)
-  const accentHue = (hue + 42) % 360
-  const displayTitle = escapeSvgText(title || 'Untitled').slice(0, 72)
-  const displayYear = escapeSvgText(year && year !== '----' ? year : 'Movie')
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 342 513"><defs><linearGradient id="g" x1="0" x2="1" y1="0" y2="1"><stop stop-color="hsl(${hue} 38% 26%)"/><stop offset=".52" stop-color="#111"/><stop offset="1" stop-color="hsl(${accentHue} 42% 18%)"/></linearGradient></defs><rect width="342" height="513" fill="url(#g)"/><circle cx="272" cy="88" r="88" fill="rgba(255,255,255,.13)"/><rect x="28" y="32" width="286" height="449" rx="22" fill="rgba(0,0,0,.18)" stroke="rgba(255,255,255,.22)"/><text x="36" y="378" fill="rgba(255,255,255,.9)" font-family="Arial, Helvetica, sans-serif" font-size="34" font-weight="900">${displayTitle}</text><text x="36" y="424" fill="rgba(255,255,255,.78)" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="800" letter-spacing="3">${displayYear} | #${rank}</text></svg>`
-
-  return `data:image/svg+xml,${encodeURIComponent(svg)}`
-}
-
 const formatRuntime = (runtime: string, runtimeMinutes: number | null) => {
   if (runtimeMinutes) {
     const hours = Math.floor(runtimeMinutes / 60)
@@ -285,35 +261,16 @@ type MoviePosterProps = {
 }
 
 const MoviePoster = ({ movie, loading = 'lazy' }: MoviePosterProps) => {
-  const hasRemotePoster = movie.posterUrl !== movie.fallbackPosterUrl
-  const [posterSrc, setPosterSrc] = useState(movie.posterUrl)
-  const [loadState, setLoadState] = useState<PosterLoadState>(
-    hasRemotePoster ? 'loading' : 'fallback',
-  )
-
-  useEffect(() => {
-    setPosterSrc(movie.posterUrl)
-    setLoadState(hasRemotePoster ? 'loading' : 'fallback')
-  }, [hasRemotePoster, movie.posterUrl])
+  const [loadState, setLoadState] = useState<PosterLoadState>('loading')
 
   return (
     <span className='warp-poster-frame' data-poster-state={loadState}>
-      <span className='warp-poster-placeholder'>
-        <span>{movie.title}</span>
-      </span>
       <img
-        src={posterSrc}
+        src={movie.posterUrl}
         alt=''
         loading={loading}
-        onError={() => {
-          if (posterSrc === movie.fallbackPosterUrl) {
-            setLoadState('fallback')
-            return
-          }
-          setPosterSrc(movie.fallbackPosterUrl)
-          setLoadState('fallback')
-        }}
-        onLoad={() => setLoadState(hasRemotePoster ? 'loaded' : 'fallback')}
+        onError={() => setLoadState('error')}
+        onLoad={() => setLoadState('loaded')}
       />
     </span>
   )
@@ -532,31 +489,29 @@ const getGenreSummaries = (movies: TestMovie[]): GenreSummary[] => {
 }
 
 export const resolveMoviePosterUrls = (
-  index: number,
-  posterPath: string,
-  generatedFallbackUrl: string,
-) => ({
-  fallbackPosterUrl: generatedFallbackUrl,
-  posterUrl:
-    index < LOCAL_POSTER_COUNT
-      ? `/media/single/${index}.jpg`
-      : posterPath
-        ? `${TMDB_POSTER_BASE_URL}${posterPath}`
-        : generatedFallbackUrl,
-})
+  movieId: string,
+  catalogIndex: number,
+  localPosterIds: ReadonlySet<string>,
+) => {
+  const posterUrl = localPosterIds.has(movieId)
+    ? `/media/posters/${encodeURIComponent(movieId)}.jpg`
+    : catalogIndex < LEGACY_LOCAL_POSTER_COUNT
+      ? `/media/single/${catalogIndex}.jpg`
+      : ''
+  return { posterUrl }
+}
 
-const mapMovie = (raw: RawMovie, index: number): TestMovie => {
+const mapMovie = (
+  raw: RawMovie,
+  index: number,
+  localPosterIds: ReadonlySet<string>,
+): TestMovie => {
   const rating = getPositiveNumber(raw, 'vote_average')
   const runtimeMinutes = getPositiveNumber(raw, 'runtime_minutes')
   const year = getText(raw, 'release_year') || '----'
   const rawId = getText(raw, 'id')
-  const posterPath = getText(raw, 'poster_path')
   const title = getText(raw, 'title') || `Untitled ${index + 1}`
-  const posterUrls = resolveMoviePosterUrls(
-    index,
-    posterPath,
-    getFallbackPosterUrl(index + 1, title, year),
-  )
+  const posterUrls = resolveMoviePosterUrls(rawId, index, localPosterIds)
 
   return {
     id: rawId ? `${index}-${rawId}` : String(index),
@@ -581,7 +536,7 @@ let movieDatasetPromise: Promise<TestMovie[]> | null = null
 const loadMovieDataset = () => {
   if (cachedMovieDataset) return Promise.resolve(cachedMovieDataset)
 
-  movieDatasetPromise ??= Promise.all(
+  const datasetRequest = Promise.all(
     Array.from({ length: DATASET_FILE_COUNT }, (_, index) =>
       fetch(`/json/${index}.json`).then((response) => {
         if (!response.ok) {
@@ -591,11 +546,25 @@ const loadMovieDataset = () => {
       }),
     ),
   )
-    .then((datasets) => {
+  const posterManifestRequest = fetch('/media/posters/availability.json')
+    .then(async (response) => {
+      if (!response.ok) return new Set<string>()
+      const availability = (await response.json()) as PosterAvailability
+      return new Set(
+        (availability.ids ?? [])
+          .map((id) => String(id ?? '').trim())
+          .filter(Boolean),
+      )
+    })
+    .catch(() => new Set<string>())
+
+  movieDatasetPromise ??= Promise.all([datasetRequest, posterManifestRequest])
+    .then(([datasets, localPosterIds]) => {
       cachedMovieDataset = datasets
         .flat()
+        .map((raw, index) => mapMovie(raw, index, localPosterIds))
+        .filter((movie) => Boolean(movie.posterUrl))
         .slice(0, LIST_WINDOW_SIZE)
-        .map(mapMovie)
       return cachedMovieDataset
     })
     .catch((error: unknown) => {
@@ -1077,7 +1046,6 @@ const WarpWall = ({
     () =>
       movies.map((movie) => ({
         id: movie.id,
-        fallbackImage: movie.fallbackPosterUrl,
         image: movie.posterUrl,
         title: movie.title,
         description:

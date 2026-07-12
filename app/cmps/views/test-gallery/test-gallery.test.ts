@@ -26,7 +26,6 @@ const movie = (
   id,
   overview: '',
   posterUrl: `/media/single/${rank}.jpg`,
-  fallbackPosterUrl: `/fallback/${rank}.svg`,
   rank,
   rating: '7.0',
   ratingValue: 7,
@@ -108,20 +107,18 @@ describe('test gallery filtering helpers', () => {
     ])
   })
 
-  it('uses local posters first and remote posters beyond the local batch', () => {
-    const fallback = 'data:image/svg+xml,fallback'
-
-    expect(resolveMoviePosterUrls(0, '/poster.jpg', fallback)).toEqual({
-      fallbackPosterUrl: fallback,
+  it('only admits verified local poster assets', () => {
+    expect(resolveMoviePosterUrls('123', 216, new Set(['123']))).toEqual({
+      posterUrl: '/media/posters/123.jpg',
+    })
+    expect(resolveMoviePosterUrls('', 0, new Set(['123']))).toEqual({
       posterUrl: '/media/single/0.jpg',
     })
-    expect(resolveMoviePosterUrls(216, '/poster.jpg', fallback)).toEqual({
-      fallbackPosterUrl: fallback,
-      posterUrl: 'https://image.tmdb.org/t/p/w342/poster.jpg',
+    expect(resolveMoviePosterUrls('', 216, new Set(['123']))).toEqual({
+      posterUrl: '',
     })
-    expect(resolveMoviePosterUrls(216, '', fallback)).toEqual({
-      fallbackPosterUrl: fallback,
-      posterUrl: fallback,
+    expect(resolveMoviePosterUrls('123', 216, new Set())).toEqual({
+      posterUrl: '',
     })
   })
 

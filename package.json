@@ -21,6 +21,7 @@
 		"test:e2e:headed": "playwright test --headed",
 		"test:e2e:ui": "playwright test --ui",
 		"test:e2e:debug": "playwright test --debug",
+		"media:posters": "node scripts/generate-poster-thumbnails.mjs",
 		"seo:sitemap": "node scripts/generate-sitemap.js",
 		"seo:validate": "echo '🔍 SEO Validation:' && echo '📄 robots.txt:' && cat public/robots.txt && echo '\\n🗺️  sitemap.xml exists:' && ls -la public/sitemap.xml"
 	},
@@ -70,6 +71,7 @@
 		"@vitejs/plugin-react-swc": "^3.11.0",
 		"@vitest/coverage-v8": "^3.2.4",
 		"jsdom": "^26.1.0",
+		"sharp": "^0.33.5",
 		"texture-compressor": "^1.0.2",
 		"typescript": "~5.8.3",
 		"vite": "^7.0.6",

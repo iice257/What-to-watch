@@ -184,6 +184,7 @@ npm run test:unit           Run unit tests
 npm run test:unit:coverage  Run unit tests with coverage
 npm run test:e2e            Run Playwright tests
 npm run test:e2e:headed     Run Playwright tests in a visible browser
+npm run media:posters       Build the local poster thumbnail library
 ```
 
 ## Configuration
@@ -205,6 +206,20 @@ VITE_APP_VERSION=
 ```
 
 ## Data And Attribution
+
+Poster thumbnails are prepared ahead of deployment and served from
+`public/media/posters/`. Run `npm run media:posters` after changing the movie
+catalog. The generator is resumable, preserves usable local poster assets, and
+writes a detailed `manifest.json` report plus a small `availability.json` index;
+the gallery uses the index to avoid requesting missing images and displays its
+generated fallback instead. On a managed
+Windows network with TLS inspection, run Node with its system CA support.
+If stored TMDB image paths have expired, set `TMDB_API_READ_TOKEN` before
+running the command. The build-time generator will refresh those paths through
+TMDB's movie-details API; the token is never exposed to the browser.
+When legacy TMDB paths are unavailable, catalog preparation can use the movie's
+IMDb ID to retrieve replacement artwork from MetaHub before normalizing and
+hosting it locally.
 
 This project includes movie information derived from the Full TMDB Movies Dataset on Kaggle, made available under the ODC Attribution License.
 

@@ -1,0 +1,27 @@
+import { expect, test } from '@playwright/test'
+
+test('reveals a complete 750-poster local gallery', async ({ page }) => {
+  test.setTimeout(240_000)
+  const remoteArtworkRequests: string[] = []
+  page.on('request', (request) => {
+    if (/image\.tmdb\.org|images\.metahub\.space/.test(request.url())) {
+      remoteArtworkRequests.push(request.url())
+    }
+  })
+
+  await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 60_000 })
+
+  const canvas = page.getByLabel('Infinite movie poster menu')
+  await expect(canvas).toHaveAttribute('data-item-count', '750', {
+    timeout: 30_000,
+  })
+  await expect(canvas).toHaveAttribute('data-texture-progress', '100', {
+    timeout: 180_000,
+  })
+  await expect(canvas).toHaveAttribute('data-webgl-state', 'ready')
+  await expect(page.locator('.warp-gallery-preloader')).toHaveAttribute(
+    'data-state',
+    'ready',
+  )
+  expect(remoteArtworkRequests).toEqual([])
+})
