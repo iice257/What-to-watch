@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { getStorageItem, STORAGE_KEYS } from './storage'
+import { STORAGE_KEYS, getStorageItem } from './storage'
 
 describe('storage', () => {
   beforeEach(() => {

@@ -64,7 +64,7 @@ describe('Settings Utils', () => {
         playedIntro: true,
         preset: VOROFORCE_PRESET.chaos,
         cellLimit: CELL_LIMIT.xs,
-        deviceClass: undefined,
+        deviceClass: DEVICE_CLASS.low,
         userConfig: { legacy: true },
       })
 

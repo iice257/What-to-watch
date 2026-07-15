@@ -169,9 +169,13 @@ const getDefaultSettings = (): PersistentSettings => ({
 const normalizeSettings = (
   settings: PersistentSettings,
 ): PersistentSettings => {
+  const defaults = getDefaultSettings()
   const normalized = {
-    ...getDefaultSettings(),
+    ...defaults,
     ...settings,
+    preset: settings.preset ?? defaults.preset,
+    cellLimit: settings.cellLimit ?? defaults.cellLimit,
+    deviceClass: settings.deviceClass ?? defaults.deviceClass,
     userConfig: settings.userConfig ?? {},
   }
 

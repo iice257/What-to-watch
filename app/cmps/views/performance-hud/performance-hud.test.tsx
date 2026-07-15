@@ -1,8 +1,8 @@
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, it } from 'vitest'
+import { initPerformanceMonitor } from '../../../performance/frame-monitor'
 import { store } from '../../../store'
-import { initPerformanceMonitor } from '../../../vf/utils/performance-monitor'
 import { PerformanceHud } from './performance-hud'
 
 const HUD_PINNED_KEY = 'w2w-perf-hud-pinned'
