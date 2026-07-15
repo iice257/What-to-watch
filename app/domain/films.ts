@@ -1,51 +1,4 @@
-import type { VoroforceCell } from '../types'
-
 export type FilmData = Record<string, string | number>
-export type FilmBatch = FilmData[]
-export type FilmBatches = Map<number, FilmBatch>
-export const FILM_BATCH_SIZE = 216
-const FILM_BATCH_COUNT = 5
-const normalizeBatchIndex = (batchIndex: number) =>
-  ((batchIndex % FILM_BATCH_COUNT) + FILM_BATCH_COUNT) % FILM_BATCH_COUNT
-const englishLanguageCountries = [
-  'Australia',
-  'Canada',
-  'Ireland',
-  'New Zealand',
-  'United Kingdom',
-  'United States',
-]
-const isAscii = (value: string) =>
-  [...value].every((character) => character.charCodeAt(0) <= 127)
-const isEnglishLikelyFilmData = (filmData: FilmData) => {
-  const title = String(filmData.title ?? '')
-  const countries = String(filmData.production_countries ?? '')
-  return (
-    title.length > 0 &&
-    isAscii(title) &&
-    englishLanguageCountries.some((country) => countries.includes(country))
-  )
-}
-const getDisplayFilmData = (filmBatch: FilmBatch, index: number) => {
-  if (!filmBatch.length) return
-  const filmData = filmBatch[index % filmBatch.length]
-  if (!filmData || isEnglishLikelyFilmData(filmData)) return filmData
-
-  for (let offset = 1; offset < filmBatch.length; offset++) {
-    const candidate = filmBatch[(index + offset) % filmBatch.length]
-    if (candidate && isEnglishLikelyFilmData(candidate)) return candidate
-  }
-
-  return filmData
-}
-const loadFallbackFilmBatch = async (filmBatches: FilmBatches) => {
-  let fallbackBatch = filmBatches.get(0)
-  if (!fallbackBatch) {
-    fallbackBatch = await loadCellFilmBatch(0)
-    filmBatches.set(0, fallbackBatch ?? [])
-  }
-  return fallbackBatch
-}
 export type DiscoveryTag =
   | 'crowd-pleaser'
   | 'hidden-gem'
@@ -60,11 +13,6 @@ export interface SimilarFilmMatch {
   film: Film
   score: number
   reasons: string[]
-}
-
-export interface FilmLocation {
-  subgrid: number
-  subgridIndex: number
 }
 
 export class Film {
@@ -101,77 +49,6 @@ export class Film {
     this.poster = String(data.poster_path)
     this.backdrop = String(data.backdrop_path)
   }
-}
-
-const loadCellFilmBatch = async (batchIndex: number) => {
-  const filmInfoBaseUrl = import.meta.env.VITE_FILM_INFO_BASE_URL ?? '/json'
-  const normalizedBatchIndex = normalizeBatchIndex(batchIndex)
-  const url = `${filmInfoBaseUrl}/${normalizedBatchIndex}.json`
-  try {
-    const response = await fetch(url)
-    if (!response.ok) {
-      throw new Error(`HTTP error! Status: ${response.status}`)
-    }
-    return await response.json()
-  } catch (error) {
-    console.log('batchIndex', batchIndex, 'normalized', normalizedBatchIndex)
-    console.error('Error loading JSON:', error)
-  }
-}
-
-export const getCellFilm = async (
-  cell: VoroforceCell,
-  filmBatches: FilmBatches,
-) => {
-  if (!cell) return
-  const metadataSubgrid = normalizeBatchIndex(
-    Number.isFinite(cell.subgrid) ? cell.subgrid : 0,
-  )
-  const metadataIndex = Number.isFinite(cell.subgridIndex)
-    ? cell.subgridIndex
-    : cell.index
-  let filmBatch = filmBatches.get(metadataSubgrid)
-  if (!filmBatch) {
-    filmBatch = await loadCellFilmBatch(metadataSubgrid)
-    filmBatches.set(metadataSubgrid, filmBatch ?? [])
-  }
-
-  const filmData = filmBatch?.length
-    ? getDisplayFilmData(filmBatch, metadataIndex)
-    : undefined
-  const displayFilmData =
-    filmData && isEnglishLikelyFilmData(filmData)
-      ? filmData
-      : (getDisplayFilmData(
-          (await loadFallbackFilmBatch(filmBatches)) ?? [],
-          metadataIndex,
-        ) ?? filmData)
-
-  return displayFilmData ? new Film(displayFilmData) : undefined
-}
-
-export const findFilmLocation = (
-  film: Film,
-  filmBatches: FilmBatches,
-): FilmLocation | undefined => {
-  for (const [subgrid, filmBatch] of filmBatches) {
-    const subgridIndex = filmBatch.findIndex(
-      (filmData) => Number(filmData.id) === film.tmdbId,
-    )
-    if (subgridIndex !== -1) return { subgrid, subgridIndex }
-  }
-}
-
-export const assignFilmToCell = (
-  cell: VoroforceCell,
-  location: FilmLocation,
-) => {
-  const metadataCellId =
-    location.subgrid * FILM_BATCH_SIZE + location.subgridIndex
-  cell.id = metadataCellId
-  cell.subgrid = location.subgrid
-  cell.subgridIndex = location.subgridIndex
-  cell.targetMediaVersion = Math.max(cell.targetMediaVersion ?? 0, 2)
 }
 
 const getGenreOverlapScore = (
@@ -276,7 +153,7 @@ export const scoreSimilarFilm = (source: Film, candidate: Film) => {
 
 export const getSimilarFilms = (
   source: Film,
-  filmBatches: FilmBatches,
+  candidates: Iterable<Film | FilmData>,
   limit = 6,
 ): SimilarFilmMatch[] => {
   if (limit <= 0) return []
@@ -293,20 +170,16 @@ export const getSimilarFilms = (
     if (matches.length > limit) matches.pop()
   }
 
-  for (const filmBatch of filmBatches.values()) {
-    for (const filmData of filmBatch) {
-      if (!isEnglishLikelyFilmData(filmData)) continue
+  for (const candidate of candidates) {
+    const film = candidate instanceof Film ? candidate : new Film(candidate)
+    const score = scoreSimilarFilm(source, film)
+    if (!Number.isFinite(score) || score <= 0) continue
 
-      const film = new Film(filmData)
-      const score = scoreSimilarFilm(source, film)
-      if (!Number.isFinite(score) || score <= 0) continue
-
-      addMatch({
-        film,
-        score,
-        reasons: getSimilarityReasons(source, film),
-      })
-    }
+    addMatch({
+      film,
+      score,
+      reasons: getSimilarityReasons(source, film),
+    })
   }
 
   return matches

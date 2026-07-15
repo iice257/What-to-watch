@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { initPerformanceMonitor } from './performance-monitor'
+import { initPerformanceMonitor } from './frame-monitor'
 
 describe('performance monitor', () => {
   afterEach(() => {

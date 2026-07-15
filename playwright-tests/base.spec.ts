@@ -9,7 +9,9 @@ test('renders the canonical gallery route', async ({ page }) => {
   ).toBeVisible()
 })
 
-test('loads the gallery without application console errors', async ({ page }) => {
+test('loads the gallery without application console errors', async ({
+  page,
+}) => {
   const consoleErrors: string[] = []
   page.on('console', (msg) => {
     if (msg.type() === 'error') {
@@ -28,7 +30,6 @@ test('loads the gallery without application console errors', async ({ page }) =>
       !error.includes('WebGL') &&
       !error.includes('GPU') &&
       !error.includes('canvas') &&
-      !error.includes('voroforce') &&
       !error.toLowerCase().includes('webgl'),
   )
 
